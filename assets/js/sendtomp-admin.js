@@ -7,15 +7,11 @@
 	$(document).ready(function () {
 
 		// Test Email button handler
-		$('.sendtomp-test-email-btn').on('click', function (e) {
+		$('#sendtomp-test-email').on('click', function (e) {
 			e.preventDefault();
 
 			var $button = $(this);
-			var $result = $button.siblings('.sendtomp-test-email-result');
-
-			if (!$result.length) {
-				$result = $button.next('.sendtomp-test-email-result');
-			}
+			var $result = $('#sendtomp-test-email-result');
 
 			$button.prop('disabled', true);
 			$result.text('Sending...').removeClass('notice-success notice-error').css('color', '');

@@ -36,6 +36,10 @@ class SendToMP_Mailer {
 		$body = $this->replace_placeholders( $template, $submission );
 		$body .= "\n\n" . $this->get_mp_email_footer( $submission );
 
+		if ( empty( $submission->resolved_member['delivery_email'] ) ) {
+			return new WP_Error( 'no_delivery_email', 'No delivery email address found for this MP.' );
+		}
+
 		$to = $submission->resolved_member['delivery_email'];
 
 		$sent = wp_mail( $to, $subject, $body, $headers );

@@ -90,22 +90,22 @@ class SendToMP_Admin {
 
 		wp_enqueue_style(
 			'sendtomp-admin',
-			plugin_dir_url( __FILE__ ) . '../assets/css/sendtomp-admin.css',
+			SENDTOMP_PLUGIN_URL . 'assets/css/sendtomp-admin.css',
 			[],
 			SENDTOMP_VERSION
 		);
 
 		wp_enqueue_script(
 			'sendtomp-admin',
-			plugin_dir_url( __FILE__ ) . '../assets/js/sendtomp-admin.js',
+			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-admin.js',
 			[ 'jquery' ],
 			SENDTOMP_VERSION,
 			true
 		);
 
-		wp_localize_script( 'sendtomp-admin', 'sendtompAdmin', [
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'sendtomp_admin' ),
+		wp_localize_script( 'sendtomp-admin', 'sendtomp_admin', [
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
 		] );
 	}
 

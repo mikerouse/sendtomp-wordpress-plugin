@@ -1,7 +1,7 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
 <?php
-$current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';
+$current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
 $tabs = array(
 	'general'      => 'General',
 	'email'        => 'Email',
@@ -13,7 +13,7 @@ $tabs = array(
 ?>
 
 <div class="wrap">
-	<h1>SendToMP <span class="sendtomp-version">v<?php echo SENDTOMP_VERSION; ?></span></h1>
+	<h1>SendToMP <span class="sendtomp-version">v<?php echo esc_html( SENDTOMP_VERSION ); ?></span></h1>
 	<p>Send verified constituent messages to UK Members of Parliament. Built by a former parliamentary assistant.</p>
 
 	<nav class="nav-tab-wrapper">
@@ -56,8 +56,8 @@ $tabs = array(
 			<?php else : ?>
 				<form method="post" action="options.php">
 					<?php
-					settings_fields('sendtomp_settings');
-					do_settings_sections('sendtomp-' . $current_tab);
+					settings_fields('sendtomp_settings_group');
+					do_settings_sections('sendtomp');
 					submit_button();
 					?>
 				</form>

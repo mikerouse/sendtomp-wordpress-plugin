@@ -11,6 +11,9 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 global $wpdb;
 
+// Deactivate license BEFORE deleting settings (needs the API URL and key).
+$settings = get_option( 'sendtomp_settings', [] );
+
 // Delete plugin options
 delete_option( 'sendtomp_settings' );
 
@@ -26,9 +29,6 @@ $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sendtomp_log" );
 // Clear scheduled events
 wp_clear_scheduled_hook( 'sendtomp_cleanup_pending' );
 wp_clear_scheduled_hook( 'sendtomp_purge_old_logs' );
-
-// Deactivate license (best effort)
-$settings = get_option( 'sendtomp_settings', [] );
 if ( ! empty( $settings['api_url'] ) && ! empty( $settings['license_key'] ) ) {
 	wp_remote_post(
 		rtrim( $settings['api_url'], '/' ) . '/license/deactivate',

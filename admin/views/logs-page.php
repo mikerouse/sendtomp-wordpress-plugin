@@ -85,22 +85,22 @@ $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 			<?php foreach ($items as $item) : ?>
 				<tr>
 					<td class="column-date">
-						<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->date))); ?>
+						<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?>
 					</td>
 					<td class="column-constituent">
 						<?php echo esc_html($item->constituent_name); ?>
-						<?php if (!empty($item->postcode)) : ?>
-							<br><small><?php echo esc_html($item->postcode); ?></small>
+						<?php if (!empty($item->constituent_postcode)) : ?>
+							<br><small><?php echo esc_html($item->constituent_postcode); ?></small>
 						<?php endif; ?>
 					</td>
-					<td class="column-mp"><?php echo esc_html($item->mp_name); ?></td>
+					<td class="column-mp"><?php echo esc_html($item->target_member_name); ?></td>
 					<td class="column-house"><?php echo esc_html($item->house); ?></td>
 					<td class="column-status">
-						<span class="sendtomp-status-<?php echo esc_attr($item->status); ?>">
-							<?php echo esc_html(ucfirst($item->status)); ?>
+						<span class="sendtomp-status-<?php echo esc_attr($item->delivery_status); ?>">
+							<?php echo esc_html(ucfirst($item->delivery_status)); ?>
 						</span>
 					</td>
-					<td class="column-adapter"><?php echo esc_html($item->adapter); ?></td>
+					<td class="column-adapter"><?php echo esc_html($item->source_adapter); ?></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>

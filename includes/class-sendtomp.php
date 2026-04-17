@@ -25,6 +25,10 @@ class SendToMP {
 		$this->load_dependencies();
 		$this->detect_adapters();
 
+		// Confirmation flow must be loaded on both frontend and admin.
+		$confirmation = new SendToMP_Confirmation();
+		$confirmation->schedule_cleanup();
+
 		if ( is_admin() ) {
 			new SendToMP_Admin();
 		}

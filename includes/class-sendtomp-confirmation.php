@@ -77,7 +77,7 @@ class SendToMP_Confirmation {
 		$token = wp_generate_password( 64, false, false );
 
 		$encryption_key = wp_salt( 'auth' );
-		$iv             = substr( md5( wp_salt( 'secure_auth' ) ), 0, 16 );
+		$iv             = openssl_random_pseudo_bytes( 16 );
 		$encrypted_data = openssl_encrypt(
 			wp_json_encode( $submission->to_array() ),
 			'aes-256-cbc',
@@ -90,13 +90,16 @@ class SendToMP_Confirmation {
 			return new WP_Error( 'encryption_failed', 'Failed to encrypt submission data.' );
 		}
 
+		// Prepend IV to ciphertext so we can extract it on decryption.
+		$encrypted_data = base64_encode( $iv ) . ':' . $encrypted_data;
+
 		$expiry_hours = (int) sendtomp()->get_setting( 'confirmation_expiry' );
 		if ( $expiry_hours < 1 ) {
 			$expiry_hours = 24;
 		}
 
-		$now        = current_time( 'mysql' );
-		$expires_at = gmdate( 'Y-m-d H:i:s', strtotime( $now ) + ( $expiry_hours * HOUR_IN_SECONDS ) );
+		$now        = gmdate( 'Y-m-d H:i:s' );
+		$expires_at = gmdate( 'Y-m-d H:i:s', time() + ( $expiry_hours * HOUR_IN_SECONDS ) );
 
 		$inserted = $wpdb->insert(
 			$wpdb->prefix . 'sendtomp_pending',
@@ -143,7 +146,7 @@ class SendToMP_Confirmation {
 			return new WP_Error( 'already_confirmed', 'This message has already been confirmed and sent.' );
 		}
 
-		if ( 'expired' === $row['status'] || $row['expires_at'] < current_time( 'mysql' ) ) {
+		if ( 'expired' === $row['status'] || $row['expires_at'] < gmdate( 'Y-m-d H:i:s' ) ) {
 			// Mark as expired if it wasn't already.
 			if ( 'expired' !== $row['status'] ) {
 				$wpdb->update(
@@ -157,11 +160,15 @@ class SendToMP_Confirmation {
 			return new WP_Error( 'token_expired', 'This confirmation link has expired. Please submit the form again.' );
 		}
 
-		// Decrypt submission data.
+		// Decrypt submission data — extract IV prepended during encryption.
 		$encryption_key = wp_salt( 'auth' );
-		$iv             = substr( md5( wp_salt( 'secure_auth' ) ), 0, 16 );
-		$decrypted      = openssl_decrypt(
-			$row['submission_data'],
+		$parts          = explode( ':', $row['submission_data'], 2 );
+		if ( 2 !== count( $parts ) ) {
+			return new WP_Error( 'invalid_data', 'Submission data format is invalid.' );
+		}
+		$iv        = base64_decode( $parts[0] );
+		$decrypted = openssl_decrypt(
+			$parts[1],
 			'aes-256-cbc',
 			$encryption_key,
 			0,
@@ -200,20 +207,15 @@ class SendToMP_Confirmation {
 
 		$table = $wpdb->prefix . 'sendtomp_pending';
 
-		// Update status to confirmed.
-		$updated = $wpdb->update(
-			$table,
-			[
-				'status'           => 'confirmed',
-				'consent_given_at' => current_time( 'mysql' ),
-			],
-			[ 'id' => $pending_id ],
-			[ '%s', '%s' ],
-			[ '%d' ]
-		);
+		// Atomic update — only confirm if still pending (prevents double-send race condition).
+		$updated = $wpdb->query( $wpdb->prepare(
+			"UPDATE {$table} SET status = 'confirmed', consent_given_at = %s WHERE id = %d AND status = 'pending'",
+			gmdate( 'Y-m-d H:i:s' ),
+			$pending_id
+		) );
 
-		if ( false === $updated ) {
-			return new WP_Error( 'confirm_failed', 'Failed to update confirmation status.' );
+		if ( 0 === (int) $updated ) {
+			return new WP_Error( 'already_confirmed', 'This message has already been confirmed and sent.' );
 		}
 
 		// Retrieve the row to get submission data.
@@ -226,11 +228,15 @@ class SendToMP_Confirmation {
 			return new WP_Error( 'record_not_found', 'Pending record not found after update.' );
 		}
 
-		// Decrypt submission data.
+		// Decrypt submission data — extract IV prepended during encryption.
 		$encryption_key = wp_salt( 'auth' );
-		$iv             = substr( md5( wp_salt( 'secure_auth' ) ), 0, 16 );
-		$decrypted      = openssl_decrypt(
-			$row['submission_data'],
+		$parts          = explode( ':', $row['submission_data'], 2 );
+		if ( 2 !== count( $parts ) ) {
+			return new WP_Error( 'invalid_data', 'Submission data format is invalid.' );
+		}
+		$iv        = base64_decode( $parts[0] );
+		$decrypted = openssl_decrypt(
+			$parts[1],
 			'aes-256-cbc',
 			$encryption_key,
 			0,
@@ -273,17 +279,7 @@ class SendToMP_Confirmation {
 
 		// Log delivery locally.
 		if ( class_exists( 'SendToMP_Logger' ) ) {
-			SendToMP_Logger::log( [
-				'constituent_email' => $submission->constituent_email,
-				'constituent_name'  => $submission->constituent_name,
-				'postcode'          => $submission->constituent_postcode,
-				'member_id'         => $submission->target_member_id,
-				'member_name'       => isset( $resolved_member['name'] ) ? $resolved_member['name'] : '',
-				'house'             => $submission->target_house,
-				'status'            => 'sent',
-				'source_adapter'    => $submission->source_adapter,
-				'source_form_id'    => $submission->source_form_id,
-			] );
+			SendToMP_Logger::log( $submission, 'sent' );
 		}
 
 		// Log to middleware (non-PII data only).

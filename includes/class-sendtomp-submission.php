@@ -26,6 +26,10 @@ class SendToMP_Submission {
 	public function __construct( array $data = [] ) {
 		foreach ( $data as $key => $value ) {
 			if ( property_exists( $this, $key ) ) {
+				// Type coercion for typed properties (prevents TypeError in PHP 8.x).
+				if ( 'target_member_id' === $key ) {
+					$value = (int) $value;
+				}
 				$this->$key = $value;
 			}
 		}
@@ -99,6 +103,6 @@ class SendToMP_Submission {
 	}
 
 	public function get_hash(): string {
-		return md5( $this->constituent_email . $this->constituent_postcode . $this->message_body );
+		return hash( 'sha256', $this->constituent_email . '|' . $this->constituent_postcode . '|' . $this->message_body );
 	}
 }
