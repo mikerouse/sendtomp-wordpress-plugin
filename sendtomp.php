@@ -1,43 +1,59 @@
 <?php
-/*
-Plugin Name: Gravity Forms Send to MP Addon
-Plugin URI: http://www.bluetorch.co.uk
-Description: An add-on to the Gravity Forms plugin that sends form data to the MP API so that it can be used to send messages to UK Members of Parliament, such as petition signatures or copies of manifestos that constituents want the MP to read and agree to.
-Version: 0.1
-Author: Mike Rouse for Bluetorch Consulting Ltd
-Author URI: http://www.bluetorch.co.uk
+/**
+ * Plugin Name: SendToMP
+ * Plugin URI: https://www.bluetorch.co.uk/sendtomp
+ * Description: Send verified constituent messages to UK Members of Parliament and Peers. Supports Gravity Forms, WPForms, Contact Form 7, and webhook integrations. Built by a former parliamentary assistant.
+ * Version: 1.0.0
+ * Author: Bluetorch Consulting Ltd
+ * Author URI: https://www.bluetorch.co.uk
+ * License: GPL v2 or later
+ * Text Domain: sendtomp
+ */
 
-------------------------------------------------------------------------
-Copyright 2024 Bluetorch Consulting Ltd
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
-------------------------------------------------------------------------
-
-*/
-define( 'GF_SENDTOMP_VERSION', '0.1' );
-
-add_action( 'gform_loaded', array( 'GF_SendToMP_Bootstrap', 'load' ), 5 );
-
-class GF_SendToMP_Bootstrap {
-
-    public static function load() {
-
-        if ( ! method_exists( 'GFForms', 'include_addon_framework' ) ) {
-            return;
-        }
-
-        require_once( 'class-sendtomp.php' );
-
-        GFAddOn::register( 'GFSendToMP' );
-    }
-
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
-function gf_sendtomp() {
-    return GFSimpleAddOn::get_instance();
+define( 'SENDTOMP_VERSION', '1.0.0' );
+define( 'SENDTOMP_PLUGIN_FILE', __FILE__ );
+define( 'SENDTOMP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'SENDTOMP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'SENDTOMP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+
+/**
+ * Autoloader for SendToMP classes.
+ *
+ * Maps class names like SendToMP_API_Client to includes/class-sendtomp-api-client.php,
+ * except Admin/Settings classes which live in admin/.
+ */
+spl_autoload_register( function ( $class ) {
+	if ( strpos( $class, 'SendToMP' ) !== 0 ) {
+		return;
+	}
+
+	$file = strtolower( $class );
+	$file = str_replace( '_', '-', $file );
+	$file = 'class-' . $file . '.php';
+
+	// Admin and Settings classes live in admin/
+	if ( strpos( $class, 'SendToMP_Admin' ) === 0 || strpos( $class, 'SendToMP_Settings' ) === 0 ) {
+		$path = SENDTOMP_PLUGIN_DIR . 'admin/' . $file;
+	} else {
+		$path = SENDTOMP_PLUGIN_DIR . 'includes/' . $file;
+	}
+
+	if ( file_exists( $path ) ) {
+		require_once $path;
+	}
+} );
+
+function sendtomp() {
+	return SendToMP::get_instance();
 }
 
+add_action( 'plugins_loaded', function () {
+	sendtomp()->init();
+}, 20 );
 
-
+register_activation_hook( __FILE__, array( 'SendToMP', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'SendToMP', 'deactivate' ) );

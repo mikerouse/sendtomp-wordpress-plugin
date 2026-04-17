@@ -49,12 +49,12 @@ The product owner (Mike Rouse / Bluetorch) is a former MP's assistant with first
 
 ### Feature Gating in the Plugin
 
-The plugin checks the license tier via the cached license response. Feature gating is done via a simple `sendtomp_can($feature)` helper:
-- `sendtomp_can('lords')` — false on Free
-- `sendtomp_can('bcc')` — false on Free
-- `sendtomp_can('webhook_api')` — true only on Pro
-- `sendtomp_can('remove_branding')` — true only on Pro
-- `sendtomp_can('local_overrides')` — false on Free
+The plugin checks the license tier via the cached license response. Feature gating is done via a simple `sendtomp()->can($feature)` helper:
+- `sendtomp()->can('lords')` — false on Free
+- `sendtomp()->can('bcc')` — false on Free
+- `sendtomp()->can('webhook_api')` — true only on Pro
+- `sendtomp()->can('remove_branding')` — true only on Pro
+- `sendtomp()->can('local_overrides')` — false on Free
 - etc.
 
 When a gated feature is accessed, the admin UI shows a contextual upgrade prompt: "This feature is available on Plus. [Upgrade →]"
@@ -125,7 +125,7 @@ The Free tier does NOT require a license key. The plugin works out of the box wi
 
 ### What Goes in the WordPress Plugin
 
-- `includes/class-sendtomp-license.php` — license key storage (`wp_options`), activation/deactivation calls to Supabase edge functions, tier detection, `sendtomp_can($feature)` helper, status caching (24hr transient)
+- `includes/class-sendtomp-license.php` — license key storage (`wp_options`), activation/deactivation calls to Supabase edge functions, tier detection, `sendtomp()->can($feature)` helper, status caching (24hr transient)
 - `includes/class-sendtomp-updater.php` — custom updater class (~200 lines) that hooks `pre_set_site_transient_update_plugins` and `plugins_api` to check for updates via the `/license/check-update` endpoint
 - License/tier settings on the plugin's admin settings page
 - Free tier works without a license key — no registration required
@@ -807,7 +807,7 @@ The plugin admin pages include a right-hand sidebar with:
 
 ### Phase 6 — Licensing + Distribution
 24. Add licensing edge functions to Supabase (with `tier` field: plus/pro)
-25. Build `sendtomp_can($feature)` tier-gating helper in plugin
+25. Build `sendtomp()->can($feature)` tier-gating helper in plugin
 26. Build custom updater class + license management in plugin
 27. Add Stripe checkout + webhook on Bluetorch Next.js site (Plus and Pro products)
 28. Build customer portal page (view key, activations, tier, expiry, download)

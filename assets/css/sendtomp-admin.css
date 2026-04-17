@@ -1,0 +1,100 @@
+/**
+ * SendToMP Admin Styles
+ */
+
+/* Version badge in title */
+.sendtomp-version {
+	color: #666;
+	font-size: 0.6em;
+	font-weight: normal;
+}
+
+/* Dashboard stat cards */
+.sendtomp-stats {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.sendtomp-stat-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 16px 24px;
+	min-width: 150px;
+}
+
+.sendtomp-stat-card .stat-value {
+	font-size: 28px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.sendtomp-stat-card .stat-label {
+	font-size: 13px;
+	color: #646970;
+	margin-top: 4px;
+}
+
+/* Two-column settings layout */
+.sendtomp-settings-wrap {
+	display: flex;
+	gap: 24px;
+}
+
+.sendtomp-settings-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.sendtomp-settings-aside {
+	width: 280px;
+	flex-shrink: 0;
+}
+
+/* Sidebar boxes */
+.sendtomp-sidebar {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 16px;
+	margin-bottom: 16px;
+}
+
+.sendtomp-sidebar h3 {
+	margin-top: 0;
+	font-size: 14px;
+}
+
+/* Log filter controls */
+.sendtomp-log-filters {
+	display: flex;
+	gap: 8px;
+	align-items: end;
+	margin-bottom: 16px;
+	flex-wrap: wrap;
+}
+
+.sendtomp-log-filters label {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+/* Status colours */
+.sendtomp-status-confirmed {
+	color: #00a32a;
+}
+
+.sendtomp-status-failed {
+	color: #d63638;
+}
+
+.sendtomp-status-pending_confirmation {
+	color: #dba617;
+}
+
+.sendtomp-status-rate_limited {
+	color: #996800;
+}
