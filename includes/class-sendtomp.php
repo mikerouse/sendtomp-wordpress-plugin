@@ -58,23 +58,27 @@ class SendToMP {
 	}
 
 	private function detect_adapters() {
-		// Gravity Forms adapter
+		// Gravity Forms adapter — uses GF's addon registration system.
 		if ( class_exists( 'GFForms' ) ) {
-			// $this->adapters['gravityforms'] = new SendToMP_Adapter_GravityForms();
+			require_once SENDTOMP_PLUGIN_DIR . 'adapters/gravity-forms/class-sendtomp-gf-adapter.php';
+			GFAddOn::register( 'SendToMP_GF_Adapter' );
+			$this->adapters['gravity-forms'] = SendToMP_GF_Adapter::get_instance();
 		}
 
-		// WPForms adapter
-		if ( function_exists( 'wpforms' ) ) {
-			// $this->adapters['wpforms'] = new SendToMP_Adapter_WPForms();
+		// WPForms adapter (Plus+ tier, Phase 3)
+		if ( function_exists( 'wpforms' ) && $this->can( 'wpforms_adapter' ) ) {
+			// $this->adapters['wpforms'] = new SendToMP_WPForms_Adapter();
 		}
 
-		// Contact Form 7 adapter
-		if ( defined( 'WPCF7_VERSION' ) ) {
-			// $this->adapters['cf7'] = new SendToMP_Adapter_CF7();
+		// Contact Form 7 adapter (Plus+ tier, Phase 3)
+		if ( defined( 'WPCF7_VERSION' ) && $this->can( 'cf7_adapter' ) ) {
+			// $this->adapters['cf7'] = new SendToMP_CF7_Adapter();
 		}
 
-		// Webhook adapter (always available)
-		// $this->adapters['webhook'] = new SendToMP_Adapter_Webhook();
+		// Webhook adapter (Pro tier, Phase 3)
+		if ( $this->can( 'webhook_api' ) ) {
+			// $this->adapters['webhook'] = new SendToMP_Webhook_Adapter();
+		}
 	}
 
 	public function get_adapters() {

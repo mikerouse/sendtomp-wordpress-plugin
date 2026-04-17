@@ -31,6 +31,20 @@ spl_autoload_register( function ( $class ) {
 		return;
 	}
 
+	// Interface and abstract adapter classes.
+	$adapter_map = [
+		'SendToMP_Form_Adapter_Interface' => 'adapters/interface-sendtomp-form-adapter.php',
+		'SendToMP_Form_Adapter_Abstract'  => 'adapters/abstract-sendtomp-form-adapter.php',
+	];
+
+	if ( isset( $adapter_map[ $class ] ) ) {
+		$path = SENDTOMP_PLUGIN_DIR . $adapter_map[ $class ];
+		if ( file_exists( $path ) ) {
+			require_once $path;
+		}
+		return;
+	}
+
 	$file = strtolower( $class );
 	$file = str_replace( '_', '-', $file );
 	$file = 'class-' . $file . '.php';
