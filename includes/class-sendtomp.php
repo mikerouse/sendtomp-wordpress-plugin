@@ -22,6 +22,7 @@ class SendToMP {
 	public function init() {
 		load_plugin_textdomain( 'sendtomp', false, dirname( SENDTOMP_PLUGIN_BASENAME ) . '/languages' );
 
+		$this->maybe_upgrade_db();
 		$this->load_dependencies();
 		$this->detect_adapters();
 
@@ -31,6 +32,19 @@ class SendToMP {
 
 		if ( is_admin() ) {
 			new SendToMP_Admin();
+		}
+	}
+
+	/**
+	 * Check DB version and re-run table creation if needed (handles plugin updates
+	 * where activation hook doesn't re-fire).
+	 */
+	private function maybe_upgrade_db() {
+		$installed_version = get_option( 'sendtomp_db_version', '0' );
+		if ( version_compare( $installed_version, SENDTOMP_VERSION, '<' ) ) {
+			SendToMP_Confirmation::create_table();
+			SendToMP_Logger::create_table();
+			update_option( 'sendtomp_db_version', SENDTOMP_VERSION );
 		}
 	}
 
@@ -73,8 +87,10 @@ class SendToMP {
 			'from_email'          => get_option( 'admin_email' ),
 			'from_name'           => get_bloginfo( 'name' ),
 			'reply_to'            => 'constituent',
+			'reply_to_email'      => '',
 			'bcc_emails'          => '',
 			'subject_template'    => 'Message from {constituent_name} in {mp_constituency}',
+			'confirmation_subject' => 'Please confirm your message to {mp_name}',
 			'email_template'      => '',
 			'default_house'       => 'commons',
 			'campaign_type'       => 'general',

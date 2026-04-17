@@ -1,11 +1,11 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
 <?php
-$filter_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-$filter_from   = isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '';
-$filter_to     = isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '';
-$filter_search = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
-$paged         = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+$filter_status = isset($_GET['status']) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '';
+$filter_from   = isset($_GET['date_from']) ? sanitize_text_field( wp_unslash( $_GET['date_from'] ) ) : '';
+$filter_to     = isset($_GET['date_to']) ? sanitize_text_field( wp_unslash( $_GET['date_to'] ) ) : '';
+$filter_search = isset($_GET['search']) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
+$paged         = isset($_GET['paged']) ? max(1, absint( $_GET['paged'] )) : 1;
 $per_page      = 20;
 
 $logs = SendToMP_Logger::get_logs(array(
@@ -31,10 +31,10 @@ $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 		<label for="sendtomp-filter-status">Status</label>
 		<select id="sendtomp-filter-status" name="status" form="sendtomp-log-filter-form">
 			<option value="">All Statuses</option>
-			<option value="sent" <?php selected($filter_status, 'sent'); ?>>Sent</option>
-			<option value="confirmed" <?php selected($filter_status, 'confirmed'); ?>>Confirmed</option>
+			<option value="confirmed" <?php selected($filter_status, 'confirmed'); ?>>Confirmed &amp; Sent</option>
 			<option value="failed" <?php selected($filter_status, 'failed'); ?>>Failed</option>
-			<option value="pending" <?php selected($filter_status, 'pending'); ?>>Pending</option>
+			<option value="pending_confirmation" <?php selected($filter_status, 'pending_confirmation'); ?>>Pending Confirmation</option>
+			<option value="rate_limited" <?php selected($filter_status, 'rate_limited'); ?>>Rate Limited</option>
 		</select>
 	</div>
 

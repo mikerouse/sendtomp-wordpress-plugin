@@ -15,7 +15,9 @@ class SendToMP_Mailer {
 		if ( 'constituent' === $settings['reply_to'] ) {
 			$headers[] = 'Reply-To: ' . $submission->constituent_email;
 		} else {
-			$headers[] = 'Reply-To: ' . $settings['reply_to'];
+			// 'fixed' mode — use the configured reply_to_email, falling back to from_email.
+			$reply_email = ! empty( $settings['reply_to_email'] ) ? $settings['reply_to_email'] : $settings['from_email'];
+			$headers[] = 'Reply-To: ' . $reply_email;
 		}
 
 		if ( ! empty( $settings['bcc_emails'] ) && sendtomp()->sendtomp_can( 'bcc' ) ) {
@@ -54,7 +56,11 @@ class SendToMP_Mailer {
 	public function send_confirmation( SendToMP_Submission $submission, string $token, string $mp_name, string $mp_constituency ) {
 		$to = $submission->constituent_email;
 
-		$subject = sprintf( 'Please confirm your message to %s', $mp_name );
+		$subject_template = sendtomp()->get_setting( 'confirmation_subject' );
+		if ( empty( $subject_template ) ) {
+			$subject_template = 'Please confirm your message to {mp_name}';
+		}
+		$subject = str_replace( '{mp_name}', $mp_name, $subject_template );
 		$subject = apply_filters( 'sendtomp_confirmation_subject', $subject, $submission, $mp_name );
 
 		$confirmation_url = $this->get_confirmation_url( $token );

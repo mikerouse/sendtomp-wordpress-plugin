@@ -83,7 +83,6 @@
 }
 
 /* Status colours */
-.sendtomp-status-sent,
 .sendtomp-status-confirmed {
 	color: #00a32a;
 }
@@ -92,6 +91,10 @@
 	color: #d63638;
 }
 
-.sendtomp-status-pending {
+.sendtomp-status-pending_confirmation {
 	color: #dba617;
+}
+
+.sendtomp-status-rate_limited {
+	color: #996800;
 }

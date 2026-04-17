@@ -266,29 +266,33 @@ class SendToMP_Confirmation {
 		$result = $mailer->send_to_mp( $submission );
 
 		if ( is_wp_error( $result ) ) {
-			// Revert status so the user can try again.
+			// Revert status and clear consent so the user can try again.
 			$wpdb->update(
 				$table,
-				[ 'status' => 'pending' ],
+				[ 'status' => 'pending', 'consent_given_at' => null ],
 				[ 'id' => $pending_id ],
-				[ '%s' ],
+				[ '%s', null ],
 				[ '%d' ]
 			);
 			return $result;
 		}
 
+		// Use resolved member ID (target_member_id may be 0 for Commons postcode lookups).
+		$member_id = ! empty( $resolved_member['id'] ) ? (int) $resolved_member['id'] : $submission->target_member_id;
+
 		// Log delivery locally.
 		if ( class_exists( 'SendToMP_Logger' ) ) {
-			SendToMP_Logger::log( $submission, 'sent' );
+			$submission->target_member_id = $member_id;
+			SendToMP_Logger::log( $submission, 'confirmed' );
 		}
 
 		// Log to middleware (non-PII data only).
 		$api_client = new SendToMP_API_Client();
 		$api_client->log_delivery( [
 			'postcode'  => $submission->constituent_postcode,
-			'member_id' => $submission->target_member_id,
+			'member_id' => $member_id,
 			'house'     => $submission->target_house,
-			'status'    => 'sent',
+			'status'    => 'confirmed',
 			'site_url'  => home_url(),
 		] );
 
@@ -385,7 +389,7 @@ class SendToMP_Confirmation {
 			$wpdb->prepare(
 				"DELETE FROM {$table} WHERE status = %s AND expires_at < %s",
 				'pending',
-				current_time( 'mysql' )
+				gmdate( 'Y-m-d H:i:s' )
 			)
 		);
 	}
