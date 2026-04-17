@@ -27,8 +27,7 @@ class SendToMP {
 		$this->detect_adapters();
 
 		// Confirmation flow must be loaded on both frontend and admin.
-		$confirmation = new SendToMP_Confirmation();
-		$confirmation->schedule_cleanup();
+		new SendToMP_Confirmation();
 
 		if ( is_admin() ) {
 			new SendToMP_Admin();
@@ -115,11 +114,15 @@ class SendToMP {
 		return isset( $settings[ $key ] ) ? $settings[ $key ] : null;
 	}
 
+	public function flush_settings_cache() {
+		$this->settings = null;
+	}
+
 	/**
 	 * Check whether the current license tier supports a given feature.
 	 * Phase 6 will implement proper tier checking. For now, all features are enabled.
 	 */
-	public function sendtomp_can( $feature ) {
+	public function can( $feature ) {
 		// Features: 'lords', 'bcc', 'webhook_api', 'remove_branding',
 		// 'local_overrides', 'wpforms_adapter', 'cf7_adapter', 'csv_export'
 		return true;
@@ -128,6 +131,7 @@ class SendToMP {
 	public static function activate() {
 		SendToMP_Confirmation::create_table();
 		SendToMP_Logger::create_table();
+		( new SendToMP_Confirmation() )->schedule_cleanup();
 	}
 
 	public static function deactivate() {

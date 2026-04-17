@@ -160,38 +160,14 @@ class SendToMP_Confirmation {
 			return new WP_Error( 'token_expired', 'This confirmation link has expired. Please submit the form again.' );
 		}
 
-		// Decrypt submission data — extract IV prepended during encryption.
-		$encryption_key = wp_salt( 'auth' );
-		$parts          = explode( ':', $row['submission_data'], 2 );
-		if ( 2 !== count( $parts ) ) {
-			return new WP_Error( 'invalid_data', 'Submission data format is invalid.' );
-		}
-		$iv        = base64_decode( $parts[0] );
-		$decrypted = openssl_decrypt(
-			$parts[1],
-			'aes-256-cbc',
-			$encryption_key,
-			0,
-			$iv
-		);
-
-		if ( false === $decrypted ) {
-			return new WP_Error( 'decryption_failed', 'Failed to decrypt submission data.' );
-		}
-
-		$submission_data = json_decode( $decrypted, true );
-		if ( null === $submission_data ) {
-			return new WP_Error( 'invalid_data', 'Submission data is corrupt.' );
-		}
-
-		$resolved_member = json_decode( $row['resolved_member'], true );
-		if ( null === $resolved_member ) {
-			return new WP_Error( 'invalid_member', 'Resolved member data is corrupt.' );
+		$decrypted = $this->decrypt_row( $row );
+		if ( is_wp_error( $decrypted ) ) {
+			return $decrypted;
 		}
 
 		return [
-			'submission'      => $submission_data,
-			'resolved_member' => $resolved_member,
+			'submission'      => $decrypted['submission_data'],
+			'resolved_member' => $decrypted['resolved_member'],
 			'pending_id'      => (int) $row['id'],
 		];
 	}
@@ -228,34 +204,13 @@ class SendToMP_Confirmation {
 			return new WP_Error( 'record_not_found', 'Pending record not found after update.' );
 		}
 
-		// Decrypt submission data — extract IV prepended during encryption.
-		$encryption_key = wp_salt( 'auth' );
-		$parts          = explode( ':', $row['submission_data'], 2 );
-		if ( 2 !== count( $parts ) ) {
-			return new WP_Error( 'invalid_data', 'Submission data format is invalid.' );
-		}
-		$iv        = base64_decode( $parts[0] );
-		$decrypted = openssl_decrypt(
-			$parts[1],
-			'aes-256-cbc',
-			$encryption_key,
-			0,
-			$iv
-		);
-
-		if ( false === $decrypted ) {
-			return new WP_Error( 'decryption_failed', 'Failed to decrypt submission data.' );
+		$decrypted = $this->decrypt_row( $row );
+		if ( is_wp_error( $decrypted ) ) {
+			return $decrypted;
 		}
 
-		$submission_data = json_decode( $decrypted, true );
-		if ( null === $submission_data ) {
-			return new WP_Error( 'invalid_data', 'Submission data is corrupt.' );
-		}
-
-		$resolved_member = json_decode( $row['resolved_member'], true );
-		if ( null === $resolved_member ) {
-			return new WP_Error( 'invalid_member', 'Resolved member data is corrupt.' );
-		}
+		$submission_data = $decrypted['submission_data'];
+		$resolved_member = $decrypted['resolved_member'];
 
 		// Reconstruct the submission object.
 		$submission                  = new SendToMP_Submission( $submission_data );
@@ -302,6 +257,43 @@ class SendToMP_Confirmation {
 	/**
 	 * Handle GET and POST requests for the confirmation page.
 	 *
+	 * Decrypt and deserialise a pending row's submission and member data.
+	 *
+	 * @param array $row The database row.
+	 * @return array|WP_Error Array with 'submission_data' and 'resolved_member', or WP_Error.
+	 */
+	private function decrypt_row( array $row ) {
+		$encryption_key = wp_salt( 'auth' );
+		$parts          = explode( ':', $row['submission_data'], 2 );
+		if ( 2 !== count( $parts ) ) {
+			return new WP_Error( 'invalid_data', 'Submission data format is invalid.' );
+		}
+		$iv        = base64_decode( $parts[0] );
+		$decrypted = openssl_decrypt( $parts[1], 'aes-256-cbc', $encryption_key, 0, $iv );
+
+		if ( false === $decrypted ) {
+			return new WP_Error( 'decryption_failed', 'Failed to decrypt submission data.' );
+		}
+
+		$submission_data = json_decode( $decrypted, true );
+		if ( null === $submission_data ) {
+			return new WP_Error( 'invalid_data', 'Submission data is corrupt.' );
+		}
+
+		$resolved_member = json_decode( $row['resolved_member'], true );
+		if ( null === $resolved_member ) {
+			return new WP_Error( 'invalid_member', 'Resolved member data is corrupt.' );
+		}
+
+		return [
+			'submission_data' => $submission_data,
+			'resolved_member' => $resolved_member,
+		];
+	}
+
+	/**
+	 * Handle GET and POST requests for the confirmation page.
+	 *
 	 * GET  ?sendtomp_confirm=TOKEN  — render the confirmation page.
 	 * POST ?sendtomp_confirm=TOKEN  — process the confirmation.
 	 *
@@ -319,7 +311,7 @@ class SendToMP_Confirmation {
 		}
 
 		// POST request — process confirmation.
-		if ( 'POST' === $_SERVER['REQUEST_METHOD'] ) {
+		if ( 'POST' === strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) ) {
 			$this->process_confirmation_post( $token );
 			return;
 		}
@@ -328,7 +320,8 @@ class SendToMP_Confirmation {
 		$pending = $this->get_pending( $token );
 
 		if ( is_wp_error( $pending ) ) {
-			$this->render_error_page( $pending->get_error_message() );
+			$code = 'token_expired' === $pending->get_error_code() ? 410 : 400;
+			$this->render_error_page( $pending->get_error_message(), $code );
 			exit;
 		}
 
@@ -359,7 +352,8 @@ class SendToMP_Confirmation {
 		// Validate pending submission.
 		$pending = $this->get_pending( $token );
 		if ( is_wp_error( $pending ) ) {
-			$this->render_error_page( $pending->get_error_message() );
+			$code = 'token_expired' === $pending->get_error_code() ? 410 : 400;
+			$this->render_error_page( $pending->get_error_message(), $code );
 			exit;
 		}
 
@@ -735,11 +729,11 @@ class SendToMP_Confirmation {
 	 * @param string $message The error message to display.
 	 * @return void
 	 */
-	public function render_error_page( string $message ): void {
+	public function render_error_page( string $message, int $status_code = 400 ): void {
 		$site_name = esc_html( get_bloginfo( 'name' ) );
 		$site_url  = esc_url( home_url( '/' ) );
 
-		status_header( 200 );
+		status_header( $status_code );
 		nocache_headers();
 
 		?><!DOCTYPE html>

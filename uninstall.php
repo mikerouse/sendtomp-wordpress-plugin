@@ -19,9 +19,11 @@ delete_option( 'sendtomp_settings' );
 delete_option( 'sendtomp_db_version' );
 
 // Delete all transients
-$wpdb->query(
-	"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_sendtomp_%' OR option_name LIKE '_transient_timeout_sendtomp_%'"
-);
+$wpdb->query( $wpdb->prepare(
+	"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+	$wpdb->esc_like( '_transient_sendtomp_' ) . '%',
+	$wpdb->esc_like( '_transient_timeout_sendtomp_' ) . '%'
+) );
 
 // Drop custom tables
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sendtomp_pending" );

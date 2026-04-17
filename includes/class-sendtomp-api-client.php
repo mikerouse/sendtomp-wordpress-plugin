@@ -13,8 +13,8 @@ class SendToMP_API_Client {
 	private string $api_key;
 
 	public function __construct() {
-		$this->api_url = untrailingslashit( sendtomp()->get_setting( 'api_url' ) );
-		$this->api_key = sendtomp()->get_setting( 'api_key' );
+		$this->api_url = untrailingslashit( (string) sendtomp()->get_setting( 'api_url' ) );
+		$this->api_key = (string) sendtomp()->get_setting( 'api_key' );
 	}
 
 	public function resolve_member( string $postcode, string $house = 'commons' ) {

@@ -77,7 +77,7 @@ class SendToMP_Logger {
 			'error_message'       => $error,
 			'source_adapter'      => $submission->source_adapter,
 			'source_form_id'      => $submission->source_form_id,
-			'created_at'          => current_time( 'mysql' ),
+			'created_at'          => gmdate( 'Y-m-d H:i:s' ),
 		];
 
 		$formats = [
@@ -193,9 +193,13 @@ class SendToMP_Logger {
 		// Get total count.
 		$count_sql = "SELECT COUNT(*) FROM {$table} {$where_sql}";
 		if ( ! empty( $values ) ) {
-			$count_sql = $wpdb->prepare( $count_sql, $values );
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $where_sql built from hardcoded clauses above.
+			$total = (int) $wpdb->get_var( $wpdb->prepare( $count_sql, $values ) );
+		} else {
+			// No user input in query — safe to execute directly.
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$total = (int) $wpdb->get_var( $count_sql );
 		}
-		$total = (int) $wpdb->get_var( $count_sql );
 
 		// Get items.
 		$query = "SELECT * FROM {$table} {$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";

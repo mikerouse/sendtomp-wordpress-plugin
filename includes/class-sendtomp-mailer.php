@@ -9,8 +9,12 @@ class SendToMP_Mailer {
 	public function send_to_mp( SendToMP_Submission $submission ) {
 		$settings = sendtomp()->get_settings();
 
+		// Strip newlines to prevent email header injection.
+		$from_name  = str_replace( [ "\r", "\n" ], '', $settings['from_name'] );
+		$from_email = str_replace( [ "\r", "\n" ], '', $settings['from_email'] );
+
 		$headers = [];
-		$headers[] = 'From: ' . $settings['from_name'] . ' <' . $settings['from_email'] . '>';
+		$headers[] = 'From: ' . $from_name . ' <' . $from_email . '>';
 
 		if ( 'constituent' === $settings['reply_to'] ) {
 			$headers[] = 'Reply-To: ' . $submission->constituent_email;
@@ -20,7 +24,7 @@ class SendToMP_Mailer {
 			$headers[] = 'Reply-To: ' . $reply_email;
 		}
 
-		if ( ! empty( $settings['bcc_emails'] ) && sendtomp()->sendtomp_can( 'bcc' ) ) {
+		if ( ! empty( $settings['bcc_emails'] ) && sendtomp()->can( 'bcc' ) ) {
 			$bcc_list = array_map( 'trim', explode( ',', $settings['bcc_emails'] ) );
 			foreach ( $bcc_list as $bcc ) {
 				if ( is_email( $bcc ) ) {

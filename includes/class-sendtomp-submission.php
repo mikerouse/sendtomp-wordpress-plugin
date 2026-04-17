@@ -24,11 +24,19 @@ class SendToMP_Submission {
 	public array $resolved_member = [];
 
 	public function __construct( array $data = [] ) {
+		$array_props = [ 'raw_data', 'metadata', 'resolved_member' ];
+
 		foreach ( $data as $key => $value ) {
 			if ( property_exists( $this, $key ) ) {
 				// Type coercion for typed properties (prevents TypeError in PHP 8.x).
 				if ( 'target_member_id' === $key ) {
 					$value = (int) $value;
+				} elseif ( in_array( $key, $array_props, true ) ) {
+					if ( is_string( $value ) ) {
+						$value = json_decode( $value, true ) ?: [];
+					} elseif ( ! is_array( $value ) ) {
+						$value = [];
+					}
 				}
 				$this->$key = $value;
 			}
