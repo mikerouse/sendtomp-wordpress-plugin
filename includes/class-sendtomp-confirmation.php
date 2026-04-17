@@ -222,13 +222,10 @@ class SendToMP_Confirmation {
 
 		if ( is_wp_error( $result ) ) {
 			// Revert status and clear consent so the user can try again.
-			$wpdb->update(
-				$table,
-				[ 'status' => 'pending', 'consent_given_at' => null ],
-				[ 'id' => $pending_id ],
-				[ '%s', null ],
-				[ '%d' ]
-			);
+			$wpdb->query( $wpdb->prepare(
+				"UPDATE {$table} SET status = 'pending', consent_given_at = NULL WHERE id = %d",
+				$pending_id
+			) );
 			return $result;
 		}
 

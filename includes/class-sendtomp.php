@@ -29,6 +29,12 @@ class SendToMP {
 		// Confirmation flow must be loaded on both frontend and admin.
 		new SendToMP_Confirmation();
 
+		// Log purge cron callback.
+		add_action( 'sendtomp_purge_old_logs', function () {
+			$days = (int) sendtomp()->get_setting( 'log_retention' );
+			SendToMP_Logger::purge_old( $days > 0 ? $days : 90 );
+		} );
+
 		if ( is_admin() ) {
 			new SendToMP_Admin();
 		}
@@ -98,9 +104,12 @@ class SendToMP {
 			'rate_limit_postcode' => 20,
 			'rate_limit_global'   => 100,
 			'confirmation_expiry' => 24,
+			'consent_text'        => '',
+			'thankyou_message'    => '',
 			'log_retention'       => 90,
 			'show_branding'       => true,
 			'directory_optin'     => false,
+			'license_key'         => '',
 		);
 
 		$saved = get_option( 'sendtomp_settings', array() );
@@ -132,6 +141,11 @@ class SendToMP {
 		SendToMP_Confirmation::create_table();
 		SendToMP_Logger::create_table();
 		( new SendToMP_Confirmation() )->schedule_cleanup();
+
+		// Schedule daily log purge.
+		if ( ! wp_next_scheduled( 'sendtomp_purge_old_logs' ) ) {
+			wp_schedule_event( time(), 'daily', 'sendtomp_purge_old_logs' );
+		}
 	}
 
 	public static function deactivate() {

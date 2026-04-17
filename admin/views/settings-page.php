@@ -52,6 +52,14 @@ $tabs = array(
 			<?php endif; ?>
 
 			<?php if ($current_tab === 'log') : ?>
+				<form method="post" action="options.php">
+					<?php
+					settings_fields('sendtomp_settings_group');
+					do_settings_sections('sendtomp');
+					submit_button();
+					?>
+				</form>
+				<hr />
 				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/logs-page.php'; ?>
 			<?php else : ?>
 				<form method="post" action="options.php">

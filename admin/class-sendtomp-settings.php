@@ -20,6 +20,7 @@ class SendToMP_Settings {
 	public function __construct() {
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
 		add_action( 'wp_ajax_sendtomp_test_email', [ $this, 'handle_test_email' ] );
+		add_action( 'wp_ajax_sendtomp_purge_logs', [ $this, 'handle_purge_logs' ] );
 	}
 
 	/**
@@ -139,6 +140,19 @@ class SendToMP_Settings {
 				'description' => __( 'The type of campaign this site is running.', 'sendtomp' ),
 			]
 		);
+
+		add_settings_field(
+			'show_branding',
+			__( 'Show Branding', 'sendtomp' ),
+			[ $this, 'render_checkbox_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key'         => 'show_branding',
+				'label'       => __( 'Show "Powered by Bluetorch\'s SendToMP" on emails and confirmation pages', 'sendtomp' ),
+				'description' => __( 'Controls whether branding appears on MP emails, confirmation emails, and the confirmation page.', 'sendtomp' ),
+			]
+		);
 	}
 
 	/**
@@ -197,6 +211,19 @@ class SendToMP_Settings {
 					'fixed'       => __( 'Fixed address (From Email)', 'sendtomp' ),
 				],
 				'description' => __( 'Who the MP can reply to.', 'sendtomp' ),
+			]
+		);
+
+		add_settings_field(
+			'reply_to_email',
+			__( 'Fixed Reply-To Email', 'sendtomp' ),
+			[ $this, 'render_text_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key'         => 'reply_to_email',
+				'type'        => 'email',
+				'description' => __( 'When Reply-To is set to "Fixed address", replies go to this email. Leave blank to use the From Email.', 'sendtomp' ),
 			]
 		);
 
@@ -575,6 +602,28 @@ class SendToMP_Settings {
 	}
 
 	/**
+	 * Render a checkbox field.
+	 *
+	 * @param array $args Field arguments.
+	 * @return void
+	 */
+	public function render_checkbox_field( array $args ): void {
+		$key     = $args['key'];
+		$value   = sendtomp()->get_setting( $key );
+		$checked = ! empty( $value ) ? 'checked' : '';
+		$label   = isset( $args['label'] ) ? $args['label'] : '';
+
+		echo '<label>';
+		echo '<input type="checkbox" name="' . esc_attr( self::OPTION_NAME . '[' . $key . ']' ) . '" value="1" ' . $checked . ' />';
+		echo ' ' . esc_html( $label );
+		echo '</label>';
+
+		if ( ! empty( $args['description'] ) ) {
+			echo '<p class="description">' . esc_html( $args['description'] ) . '</p>';
+		}
+	}
+
+	/**
 	 * Render the test email button.
 	 *
 	 * @return void
@@ -662,6 +711,10 @@ class SendToMP_Settings {
 				: 'constituent';
 		}
 
+		if ( isset( $input['reply_to_email'] ) ) {
+			$sanitized['reply_to_email'] = sanitize_email( $input['reply_to_email'] );
+		}
+
 		if ( isset( $input['bcc_emails'] ) ) {
 			$sanitized['bcc_emails'] = sanitize_text_field( $input['bcc_emails'] );
 		}
@@ -711,6 +764,10 @@ class SendToMP_Settings {
 			$sanitized['rate_limit_global'] = absint( $input['rate_limit_global'] );
 		}
 
+		// Branding.
+		$sanitized['show_branding']  = ! empty( $input['show_branding'] );
+		$sanitized['directory_optin'] = ! empty( $input['directory_optin'] );
+
 		// License.
 		if ( isset( $input['license_key'] ) ) {
 			$sanitized['license_key'] = sanitize_text_field( $input['license_key'] );
@@ -748,6 +805,26 @@ class SendToMP_Settings {
 		}
 
 		wp_send_json_success( [ 'message' => sprintf( __( 'Test email sent to %s.', 'sendtomp' ), $to ) ] );
+	}
+
+	/**
+	 * AJAX handler — purge old logs.
+	 *
+	 * @return void
+	 */
+	public function handle_purge_logs(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'You do not have permission to perform this action.', 'sendtomp' ) ] );
+		}
+
+		$days    = (int) sendtomp()->get_setting( 'log_retention' );
+		$deleted = SendToMP_Logger::purge_old( $days );
+
+		wp_send_json_success( [
+			'message' => sprintf( __( 'Purged %d log entries older than %d days.', 'sendtomp' ), $deleted, $days ),
+		] );
 	}
 
 	/**
