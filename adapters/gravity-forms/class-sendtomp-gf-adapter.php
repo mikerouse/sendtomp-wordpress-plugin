@@ -265,12 +265,12 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	public function process_feed( $feed, $entry, $form ) {
 		// Extract mapped field values.
 		$mapped_data = [
-			'constituent_name'     => $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_name' ) ),
-			'constituent_email'    => $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_email' ) ),
-			'constituent_postcode' => $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_postcode' ) ),
-			'constituent_address'  => $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_address' ) ),
-			'message_subject'      => $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_message_subject' ) ),
-			'message_body'         => $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_message_body' ) ),
+			'constituent_name'     => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_name' ) ) ),
+			'constituent_email'    => sanitize_email( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_email' ) ) ),
+			'constituent_postcode' => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_postcode' ) ) ),
+			'constituent_address'  => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_address' ) ) ),
+			'message_subject'      => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_message_subject' ) ) ),
+			'message_body'         => sanitize_textarea_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_message_body' ) ) ),
 		];
 
 		$target_house  = rgar( $feed['meta'], 'target_house', 'commons' );
@@ -357,22 +357,22 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 			return $api_result;
 		}
 
-		// 8. Build resolved_member array (merge member + delivery from API response).
-		$resolved_member = [];
+		// 8. Build resolved_member array — normalise keys to match what the mailer expects.
+		$member   = ! empty( $api_result['member'] ) ? $api_result['member'] : [];
+		$delivery = ! empty( $api_result['delivery'] ) ? $api_result['delivery'] : [];
 
-		if ( ! empty( $api_result['member'] ) ) {
-			$resolved_member = $api_result['member'];
-		}
-
-		if ( ! empty( $api_result['delivery'] ) ) {
-			$resolved_member = array_merge( $resolved_member, $api_result['delivery'] );
-		}
+		$resolved_member = [
+			'id'               => isset( $member['id'] ) ? (int) $member['id'] : 0,
+			'name'             => isset( $member['name'] ) ? $member['name'] : '',
+			'party'            => isset( $member['party'] ) ? $member['party'] : '',
+			'constituency'     => isset( $member['constituency'] ) ? $member['constituency'] : '',
+			'house'            => isset( $member['house'] ) ? $member['house'] : $submission->target_house,
+			'delivery_email'   => isset( $delivery['email'] ) ? $delivery['email'] : '',
+			'override_applied' => isset( $delivery['override_applied'] ) ? $delivery['override_applied'] : false,
+		];
 
 		$submission->resolved_member = $resolved_member;
-
-		if ( ! empty( $resolved_member['id'] ) ) {
-			$submission->target_member_id = (int) $resolved_member['id'];
-		}
+		$submission->target_member_id = $resolved_member['id'];
 
 		// 9. Store pending submission.
 		$confirmation = new SendToMP_Confirmation();

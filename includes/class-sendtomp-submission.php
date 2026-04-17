@@ -68,9 +68,9 @@ class SendToMP_Submission {
 			$errors->add( 'invalid_house', 'Target house must be commons or lords.' );
 		}
 
-		if ( 'lords' === $this->target_house && $this->target_member_id <= 0 ) {
-			$errors->add( 'missing_member_id', 'A target member ID is required when writing to the House of Lords.' );
-		}
+		// Note: target_member_id is validated post-API-resolution, not here.
+		// For Commons, it's resolved from postcode. For Lords (Phase 4), it's
+		// selected from a search UI and set before the API call.
 
 		if ( $errors->has_errors() ) {
 			return $errors;
