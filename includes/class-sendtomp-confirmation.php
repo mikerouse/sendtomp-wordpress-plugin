@@ -1,0 +1,811 @@
+<?php
+/**
+ * SendToMP_Confirmation — handles the double opt-in confirmation flow.
+ *
+ * Manages the pending submissions table, confirmation page rendering,
+ * and the confirm-and-send workflow.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+class SendToMP_Confirmation {
+
+	/**
+	 * Create the custom pending submissions table.
+	 *
+	 * Called on plugin activation via register_activation_hook.
+	 *
+	 * @return void
+	 */
+	public static function create_table(): void {
+		global $wpdb;
+
+		$table_name      = $wpdb->prefix . 'sendtomp_pending';
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			token varchar(64) NOT NULL,
+			submission_data longtext NOT NULL,
+			resolved_member text NOT NULL,
+			constituent_email varchar(255) NOT NULL,
+			status varchar(20) NOT NULL DEFAULT 'pending',
+			consent_given_at datetime DEFAULT NULL,
+			created_at datetime NOT NULL,
+			expires_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY token (token),
+			KEY constituent_email (constituent_email),
+			KEY status (status)
+		) $charset_collate;";
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql );
+	}
+
+	/**
+	 * Constructor — register WordPress hooks.
+	 */
+	public function __construct() {
+		add_action( 'init', [ $this, 'handle_confirmation_request' ] );
+		add_action( 'sendtomp_cleanup_pending', [ $this, 'cleanup_expired' ] );
+	}
+
+	/**
+	 * Schedule the hourly cleanup cron event if not already scheduled.
+	 *
+	 * @return void
+	 */
+	public function schedule_cleanup(): void {
+		if ( ! wp_next_scheduled( 'sendtomp_cleanup_pending' ) ) {
+			wp_schedule_event( time(), 'hourly', 'sendtomp_cleanup_pending' );
+		}
+	}
+
+	/**
+	 * Store a pending submission and return the confirmation token.
+	 *
+	 * @param SendToMP_Submission $submission     The normalised submission.
+	 * @param array               $resolved_member The resolved MP/peer data.
+	 * @return string|WP_Error Token string on success, WP_Error on failure.
+	 */
+	public function store_pending( SendToMP_Submission $submission, array $resolved_member ) {
+		global $wpdb;
+
+		$token = wp_generate_password( 64, false, false );
+
+		$encryption_key = wp_salt( 'auth' );
+		$iv             = substr( md5( wp_salt( 'secure_auth' ) ), 0, 16 );
+		$encrypted_data = openssl_encrypt(
+			wp_json_encode( $submission->to_array() ),
+			'aes-256-cbc',
+			$encryption_key,
+			0,
+			$iv
+		);
+
+		if ( false === $encrypted_data ) {
+			return new WP_Error( 'encryption_failed', 'Failed to encrypt submission data.' );
+		}
+
+		$expiry_hours = (int) sendtomp()->get_setting( 'confirmation_expiry' );
+		if ( $expiry_hours < 1 ) {
+			$expiry_hours = 24;
+		}
+
+		$now        = current_time( 'mysql' );
+		$expires_at = gmdate( 'Y-m-d H:i:s', strtotime( $now ) + ( $expiry_hours * HOUR_IN_SECONDS ) );
+
+		$inserted = $wpdb->insert(
+			$wpdb->prefix . 'sendtomp_pending',
+			[
+				'token'             => $token,
+				'submission_data'   => $encrypted_data,
+				'resolved_member'   => wp_json_encode( $resolved_member ),
+				'constituent_email' => sanitize_email( $submission->constituent_email ),
+				'status'            => 'pending',
+				'created_at'        => $now,
+				'expires_at'        => $expires_at,
+			],
+			[ '%s', '%s', '%s', '%s', '%s', '%s', '%s' ]
+		);
+
+		if ( false === $inserted ) {
+			return new WP_Error( 'db_insert_failed', 'Failed to store pending submission.' );
+		}
+
+		return $token;
+	}
+
+	/**
+	 * Retrieve a pending submission by token.
+	 *
+	 * @param string $token The confirmation token.
+	 * @return array|WP_Error Array with 'submission', 'resolved_member', 'pending_id' on success.
+	 */
+	public function get_pending( string $token ) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'sendtomp_pending';
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE token = %s LIMIT 1", $token ),
+			ARRAY_A
+		);
+
+		if ( ! $row ) {
+			return new WP_Error( 'invalid_token', 'This confirmation link is not valid.' );
+		}
+
+		if ( 'confirmed' === $row['status'] ) {
+			return new WP_Error( 'already_confirmed', 'This message has already been confirmed and sent.' );
+		}
+
+		if ( 'expired' === $row['status'] || $row['expires_at'] < current_time( 'mysql' ) ) {
+			// Mark as expired if it wasn't already.
+			if ( 'expired' !== $row['status'] ) {
+				$wpdb->update(
+					$table,
+					[ 'status' => 'expired' ],
+					[ 'id' => $row['id'] ],
+					[ '%s' ],
+					[ '%d' ]
+				);
+			}
+			return new WP_Error( 'token_expired', 'This confirmation link has expired. Please submit the form again.' );
+		}
+
+		// Decrypt submission data.
+		$encryption_key = wp_salt( 'auth' );
+		$iv             = substr( md5( wp_salt( 'secure_auth' ) ), 0, 16 );
+		$decrypted      = openssl_decrypt(
+			$row['submission_data'],
+			'aes-256-cbc',
+			$encryption_key,
+			0,
+			$iv
+		);
+
+		if ( false === $decrypted ) {
+			return new WP_Error( 'decryption_failed', 'Failed to decrypt submission data.' );
+		}
+
+		$submission_data = json_decode( $decrypted, true );
+		if ( null === $submission_data ) {
+			return new WP_Error( 'invalid_data', 'Submission data is corrupt.' );
+		}
+
+		$resolved_member = json_decode( $row['resolved_member'], true );
+		if ( null === $resolved_member ) {
+			return new WP_Error( 'invalid_member', 'Resolved member data is corrupt.' );
+		}
+
+		return [
+			'submission'      => $submission_data,
+			'resolved_member' => $resolved_member,
+			'pending_id'      => (int) $row['id'],
+		];
+	}
+
+	/**
+	 * Mark a pending submission as confirmed and send the message.
+	 *
+	 * @param int $pending_id The row ID.
+	 * @return true|WP_Error True on success, WP_Error on failure.
+	 */
+	public function confirm( int $pending_id ) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'sendtomp_pending';
+
+		// Update status to confirmed.
+		$updated = $wpdb->update(
+			$table,
+			[
+				'status'           => 'confirmed',
+				'consent_given_at' => current_time( 'mysql' ),
+			],
+			[ 'id' => $pending_id ],
+			[ '%s', '%s' ],
+			[ '%d' ]
+		);
+
+		if ( false === $updated ) {
+			return new WP_Error( 'confirm_failed', 'Failed to update confirmation status.' );
+		}
+
+		// Retrieve the row to get submission data.
+		$row = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d LIMIT 1", $pending_id ),
+			ARRAY_A
+		);
+
+		if ( ! $row ) {
+			return new WP_Error( 'record_not_found', 'Pending record not found after update.' );
+		}
+
+		// Decrypt submission data.
+		$encryption_key = wp_salt( 'auth' );
+		$iv             = substr( md5( wp_salt( 'secure_auth' ) ), 0, 16 );
+		$decrypted      = openssl_decrypt(
+			$row['submission_data'],
+			'aes-256-cbc',
+			$encryption_key,
+			0,
+			$iv
+		);
+
+		if ( false === $decrypted ) {
+			return new WP_Error( 'decryption_failed', 'Failed to decrypt submission data.' );
+		}
+
+		$submission_data = json_decode( $decrypted, true );
+		if ( null === $submission_data ) {
+			return new WP_Error( 'invalid_data', 'Submission data is corrupt.' );
+		}
+
+		$resolved_member = json_decode( $row['resolved_member'], true );
+		if ( null === $resolved_member ) {
+			return new WP_Error( 'invalid_member', 'Resolved member data is corrupt.' );
+		}
+
+		// Reconstruct the submission object.
+		$submission                  = new SendToMP_Submission( $submission_data );
+		$submission->resolved_member = $resolved_member;
+
+		// Send the email to the MP.
+		$mailer = new SendToMP_Mailer();
+		$result = $mailer->send_to_mp( $submission );
+
+		if ( is_wp_error( $result ) ) {
+			// Revert status so the user can try again.
+			$wpdb->update(
+				$table,
+				[ 'status' => 'pending' ],
+				[ 'id' => $pending_id ],
+				[ '%s' ],
+				[ '%d' ]
+			);
+			return $result;
+		}
+
+		// Log delivery locally.
+		if ( class_exists( 'SendToMP_Logger' ) ) {
+			SendToMP_Logger::log( [
+				'constituent_email' => $submission->constituent_email,
+				'constituent_name'  => $submission->constituent_name,
+				'postcode'          => $submission->constituent_postcode,
+				'member_id'         => $submission->target_member_id,
+				'member_name'       => isset( $resolved_member['name'] ) ? $resolved_member['name'] : '',
+				'house'             => $submission->target_house,
+				'status'            => 'sent',
+				'source_adapter'    => $submission->source_adapter,
+				'source_form_id'    => $submission->source_form_id,
+			] );
+		}
+
+		// Log to middleware (non-PII data only).
+		$api_client = new SendToMP_API_Client();
+		$api_client->log_delivery( [
+			'postcode'  => $submission->constituent_postcode,
+			'member_id' => $submission->target_member_id,
+			'house'     => $submission->target_house,
+			'status'    => 'sent',
+			'site_url'  => home_url(),
+		] );
+
+		return true;
+	}
+
+	/**
+	 * Handle GET and POST requests for the confirmation page.
+	 *
+	 * GET  ?sendtomp_confirm=TOKEN  — render the confirmation page.
+	 * POST ?sendtomp_confirm=TOKEN  — process the confirmation.
+	 *
+	 * @return void
+	 */
+	public function handle_confirmation_request(): void {
+		if ( ! isset( $_GET['sendtomp_confirm'] ) ) {
+			return;
+		}
+
+		$token = sanitize_text_field( wp_unslash( $_GET['sendtomp_confirm'] ) );
+
+		if ( empty( $token ) ) {
+			return;
+		}
+
+		// POST request — process confirmation.
+		if ( 'POST' === $_SERVER['REQUEST_METHOD'] ) {
+			$this->process_confirmation_post( $token );
+			return;
+		}
+
+		// GET request — render confirmation page.
+		$pending = $this->get_pending( $token );
+
+		if ( is_wp_error( $pending ) ) {
+			$this->render_error_page( $pending->get_error_message() );
+			exit;
+		}
+
+		$this->render_confirmation_page( $pending );
+		exit;
+	}
+
+	/**
+	 * Process the POST confirmation form submission.
+	 *
+	 * @param string $token The confirmation token.
+	 * @return void
+	 */
+	private function process_confirmation_post( string $token ): void {
+		// Verify the nonce.
+		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'sendtomp_confirm_' . $token ) ) {
+			$this->render_error_page( 'Security check failed. Please go back and try again.' );
+			exit;
+		}
+
+		// Validate the token from POST matches the URL.
+		$post_token = isset( $_POST['sendtomp_token'] ) ? sanitize_text_field( wp_unslash( $_POST['sendtomp_token'] ) ) : '';
+		if ( $post_token !== $token ) {
+			$this->render_error_page( 'Token mismatch. Please go back and try again.' );
+			exit;
+		}
+
+		// Validate pending submission.
+		$pending = $this->get_pending( $token );
+		if ( is_wp_error( $pending ) ) {
+			$this->render_error_page( $pending->get_error_message() );
+			exit;
+		}
+
+		// Confirm and send.
+		$result = $this->confirm( $pending['pending_id'] );
+		if ( is_wp_error( $result ) ) {
+			$this->render_error_page( $result->get_error_message() );
+			exit;
+		}
+
+		// Render thank-you page.
+		$this->render_thankyou_page( $pending['resolved_member'] );
+		exit;
+	}
+
+	/**
+	 * Delete expired pending submissions.
+	 *
+	 * @return void
+	 */
+	public function cleanup_expired(): void {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'sendtomp_pending';
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$table} WHERE status = %s AND expires_at < %s",
+				'pending',
+				current_time( 'mysql' )
+			)
+		);
+	}
+
+	/**
+	 * Render the confirmation page.
+	 *
+	 * Shows the message preview, MP details, consent text, and a Confirm & Send form.
+	 *
+	 * @param array $data Array with 'submission', 'resolved_member', 'pending_id'.
+	 * @return void
+	 */
+	public function render_confirmation_page( array $data ): void {
+		$submission      = $data['submission'];
+		$resolved_member = $data['resolved_member'];
+
+		$mp_name         = isset( $resolved_member['name'] ) ? esc_html( $resolved_member['name'] ) : 'your MP';
+		$mp_constituency = isset( $resolved_member['constituency'] ) ? esc_html( $resolved_member['constituency'] ) : '';
+		$message_subject = isset( $submission['message_subject'] ) ? esc_html( $submission['message_subject'] ) : '';
+		$message_body    = isset( $submission['message_body'] ) ? esc_html( $submission['message_body'] ) : '';
+		$site_name       = esc_html( get_bloginfo( 'name' ) );
+
+		$token      = sanitize_text_field( wp_unslash( $_GET['sendtomp_confirm'] ) );
+		$form_action = esc_url( add_query_arg( [ 'sendtomp_confirm' => $token ], home_url( '/' ) ) );
+		$nonce_action = 'sendtomp_confirm_' . $token;
+
+		$show_branding = sendtomp()->get_setting( 'show_branding' );
+
+		status_header( 200 );
+		nocache_headers();
+
+		?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title><?php echo esc_html( sprintf( 'Confirm your message to %s', $mp_name ) ); ?> &mdash; <?php echo $site_name; ?></title>
+	<?php wp_head(); ?>
+	<style>
+		body.sendtomp-confirmation {
+			margin: 0;
+			padding: 0;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+			background: #f0f0f1;
+			color: #1d2327;
+			line-height: 1.6;
+		}
+		.sendtomp-wrap {
+			max-width: 640px;
+			margin: 40px auto;
+			padding: 0 20px;
+		}
+		.sendtomp-card {
+			background: #fff;
+			border: 1px solid #c3c4c7;
+			border-radius: 4px;
+			padding: 32px;
+			margin-bottom: 20px;
+		}
+		.sendtomp-card h1 {
+			font-size: 1.5em;
+			margin: 0 0 8px;
+			color: #1d2327;
+		}
+		.sendtomp-card .subtitle {
+			color: #646970;
+			margin: 0 0 24px;
+			font-size: 0.95em;
+		}
+		.sendtomp-preview {
+			background: #f6f7f7;
+			border-left: 4px solid #2271b1;
+			padding: 16px 20px;
+			margin: 20px 0;
+			border-radius: 0 4px 4px 0;
+		}
+		.sendtomp-preview h3 {
+			margin: 0 0 8px;
+			font-size: 0.95em;
+			color: #2271b1;
+		}
+		.sendtomp-preview .subject {
+			font-weight: 600;
+			margin-bottom: 8px;
+		}
+		.sendtomp-preview .body {
+			white-space: pre-wrap;
+			word-wrap: break-word;
+			font-size: 0.9em;
+		}
+		.sendtomp-consent {
+			background: #fcf9e8;
+			border: 1px solid #dba617;
+			border-radius: 4px;
+			padding: 16px;
+			margin: 20px 0;
+			font-size: 0.9em;
+			color: #6e4e00;
+		}
+		.sendtomp-actions {
+			margin-top: 24px;
+			text-align: center;
+		}
+		.sendtomp-actions button {
+			background: #2271b1;
+			color: #fff;
+			border: none;
+			padding: 12px 32px;
+			font-size: 1em;
+			font-weight: 600;
+			border-radius: 4px;
+			cursor: pointer;
+			line-height: 1.4;
+		}
+		.sendtomp-actions button:hover,
+		.sendtomp-actions button:focus {
+			background: #135e96;
+			outline: 2px solid #2271b1;
+			outline-offset: 2px;
+		}
+		.sendtomp-footer {
+			text-align: center;
+			font-size: 0.8em;
+			color: #a7aaad;
+			padding: 10px 0 30px;
+		}
+		.sendtomp-footer a {
+			color: #a7aaad;
+			text-decoration: none;
+		}
+		.sendtomp-footer a:hover {
+			color: #646970;
+		}
+	</style>
+</head>
+<body class="sendtomp-confirmation">
+	<div class="sendtomp-wrap">
+		<div class="sendtomp-card">
+			<h1>Confirm your message</h1>
+			<p class="subtitle">
+				to <?php echo $mp_name; ?><?php echo $mp_constituency ? ', ' . $mp_constituency : ''; ?>
+			</p>
+
+			<div class="sendtomp-preview">
+				<h3>Your message preview</h3>
+				<?php if ( $message_subject ) : ?>
+					<div class="subject"><?php echo $message_subject; ?></div>
+				<?php endif; ?>
+				<div class="body"><?php echo $message_body; ?></div>
+			</div>
+
+			<div class="sendtomp-consent">
+				By confirming, you consent to your name, email address, postcode, and message
+				being sent to <?php echo $mp_name; ?><?php echo $mp_constituency ? ', ' . $mp_constituency : ''; ?>.
+				<?php echo $mp_name; ?> may reply to you directly.
+			</div>
+
+			<form method="post" action="<?php echo $form_action; ?>" class="sendtomp-actions">
+				<input type="hidden" name="sendtomp_token" value="<?php echo esc_attr( $token ); ?>">
+				<?php wp_nonce_field( $nonce_action ); ?>
+				<button type="submit">Confirm &amp; Send</button>
+			</form>
+		</div>
+
+		<?php if ( $show_branding ) : ?>
+			<div class="sendtomp-footer">
+				Powered by <a href="https://www.bluetorch.co.uk/sendtomp" target="_blank" rel="noopener">Bluetorch's SendToMP</a>
+			</div>
+		<?php endif; ?>
+	</div>
+	<?php wp_footer(); ?>
+</body>
+</html>
+		<?php
+	}
+
+	/**
+	 * Render the thank-you page after successful confirmation.
+	 *
+	 * @param array $resolved_member The resolved MP/peer data.
+	 * @return void
+	 */
+	public function render_thankyou_page( array $resolved_member ): void {
+		$mp_name         = isset( $resolved_member['name'] ) ? esc_html( $resolved_member['name'] ) : 'your MP';
+		$mp_constituency = isset( $resolved_member['constituency'] ) ? esc_html( $resolved_member['constituency'] ) : '';
+		$site_name       = esc_html( get_bloginfo( 'name' ) );
+		$site_url        = esc_url( home_url( '/' ) );
+
+		$show_branding = sendtomp()->get_setting( 'show_branding' );
+
+		// Social sharing URLs.
+		$share_text   = rawurlencode( sprintf( 'I just wrote to my MP, %s, about an issue I care about.', $mp_name ) );
+		$share_url    = rawurlencode( home_url( '/' ) );
+		$twitter_url  = 'https://twitter.com/intent/tweet?text=' . $share_text . '&url=' . $share_url;
+		$facebook_url = 'https://www.facebook.com/sharer/sharer.php?u=' . $share_url;
+		$email_subject = rawurlencode( sprintf( 'I wrote to my MP, %s', $mp_name ) );
+		$email_body    = rawurlencode( sprintf( "I just wrote to my MP, %s (%s), about an issue I care about. You can write to yours too: %s", $mp_name, $mp_constituency, home_url( '/' ) ) );
+		$email_url     = 'mailto:?subject=' . $email_subject . '&body=' . $email_body;
+
+		status_header( 200 );
+		nocache_headers();
+
+		?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title><?php echo esc_html( 'Message sent' ); ?> &mdash; <?php echo $site_name; ?></title>
+	<?php wp_head(); ?>
+	<style>
+		body.sendtomp-thankyou {
+			margin: 0;
+			padding: 0;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+			background: #f0f0f1;
+			color: #1d2327;
+			line-height: 1.6;
+		}
+		.sendtomp-wrap {
+			max-width: 640px;
+			margin: 40px auto;
+			padding: 0 20px;
+		}
+		.sendtomp-card {
+			background: #fff;
+			border: 1px solid #c3c4c7;
+			border-radius: 4px;
+			padding: 32px;
+			margin-bottom: 20px;
+			text-align: center;
+		}
+		.sendtomp-card .checkmark {
+			font-size: 3em;
+			color: #00a32a;
+			margin-bottom: 12px;
+		}
+		.sendtomp-card h1 {
+			font-size: 1.5em;
+			margin: 0 0 12px;
+			color: #1d2327;
+		}
+		.sendtomp-card p {
+			color: #646970;
+			margin: 0 0 24px;
+			font-size: 1em;
+		}
+		.sendtomp-share {
+			margin-top: 20px;
+			padding-top: 20px;
+			border-top: 1px solid #e0e0e0;
+		}
+		.sendtomp-share h3 {
+			font-size: 0.95em;
+			color: #646970;
+			margin: 0 0 12px;
+		}
+		.sendtomp-share-links {
+			display: flex;
+			justify-content: center;
+			gap: 12px;
+			flex-wrap: wrap;
+		}
+		.sendtomp-share-links a {
+			display: inline-block;
+			padding: 8px 20px;
+			border: 1px solid #c3c4c7;
+			border-radius: 4px;
+			text-decoration: none;
+			color: #2271b1;
+			font-size: 0.9em;
+			font-weight: 500;
+		}
+		.sendtomp-share-links a:hover {
+			background: #f6f7f7;
+			border-color: #2271b1;
+		}
+		.sendtomp-back {
+			margin-top: 20px;
+		}
+		.sendtomp-back a {
+			color: #2271b1;
+			text-decoration: none;
+			font-size: 0.9em;
+		}
+		.sendtomp-back a:hover {
+			text-decoration: underline;
+		}
+		.sendtomp-footer {
+			text-align: center;
+			font-size: 0.8em;
+			color: #a7aaad;
+			padding: 10px 0 30px;
+		}
+		.sendtomp-footer a {
+			color: #a7aaad;
+			text-decoration: none;
+		}
+		.sendtomp-footer a:hover {
+			color: #646970;
+		}
+	</style>
+</head>
+<body class="sendtomp-thankyou">
+	<div class="sendtomp-wrap">
+		<div class="sendtomp-card">
+			<div class="checkmark">&#10003;</div>
+			<h1>Your message has been sent</h1>
+			<p>
+				Your message has been sent to <?php echo $mp_name; ?><?php echo $mp_constituency ? ' (' . $mp_constituency . ')' : ''; ?>.
+			</p>
+
+			<div class="sendtomp-share">
+				<h3>Spread the word</h3>
+				<div class="sendtomp-share-links">
+					<a href="<?php echo esc_url( $twitter_url ); ?>" target="_blank" rel="noopener">Share on X</a>
+					<a href="<?php echo esc_url( $facebook_url ); ?>" target="_blank" rel="noopener">Share on Facebook</a>
+					<a href="<?php echo esc_url( $email_url ); ?>">Share via Email</a>
+				</div>
+			</div>
+
+			<div class="sendtomp-back">
+				<a href="<?php echo $site_url; ?>">&larr; Back to <?php echo $site_name; ?></a>
+			</div>
+		</div>
+
+		<?php if ( $show_branding ) : ?>
+			<div class="sendtomp-footer">
+				Powered by <a href="https://www.bluetorch.co.uk/sendtomp" target="_blank" rel="noopener">Bluetorch's SendToMP</a>
+			</div>
+		<?php endif; ?>
+	</div>
+	<?php wp_footer(); ?>
+</body>
+</html>
+		<?php
+	}
+
+	/**
+	 * Render a simple error page.
+	 *
+	 * @param string $message The error message to display.
+	 * @return void
+	 */
+	public function render_error_page( string $message ): void {
+		$site_name = esc_html( get_bloginfo( 'name' ) );
+		$site_url  = esc_url( home_url( '/' ) );
+
+		status_header( 200 );
+		nocache_headers();
+
+		?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+	<meta charset="<?php bloginfo( 'charset' ); ?>">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title><?php echo esc_html( 'Confirmation' ); ?> &mdash; <?php echo $site_name; ?></title>
+	<?php wp_head(); ?>
+	<style>
+		body.sendtomp-error {
+			margin: 0;
+			padding: 0;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+			background: #f0f0f1;
+			color: #1d2327;
+			line-height: 1.6;
+		}
+		.sendtomp-wrap {
+			max-width: 640px;
+			margin: 40px auto;
+			padding: 0 20px;
+		}
+		.sendtomp-card {
+			background: #fff;
+			border: 1px solid #c3c4c7;
+			border-radius: 4px;
+			padding: 32px;
+			text-align: center;
+		}
+		.sendtomp-card .icon {
+			font-size: 3em;
+			color: #d63638;
+			margin-bottom: 12px;
+		}
+		.sendtomp-card h1 {
+			font-size: 1.3em;
+			margin: 0 0 12px;
+			color: #1d2327;
+		}
+		.sendtomp-card p {
+			color: #646970;
+			margin: 0 0 24px;
+		}
+		.sendtomp-card a {
+			color: #2271b1;
+			text-decoration: none;
+		}
+		.sendtomp-card a:hover {
+			text-decoration: underline;
+		}
+	</style>
+</head>
+<body class="sendtomp-error">
+	<div class="sendtomp-wrap">
+		<div class="sendtomp-card">
+			<div class="icon">&#10007;</div>
+			<h1>Unable to confirm</h1>
+			<p><?php echo esc_html( $message ); ?></p>
+			<p><a href="<?php echo $site_url; ?>">&larr; Back to <?php echo $site_name; ?></a></p>
+		</div>
+	</div>
+	<?php wp_footer(); ?>
+</body>
+</html>
+		<?php
+	}
+}
