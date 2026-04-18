@@ -19,11 +19,9 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 	const REST_NAMESPACE = 'sendtomp/v1';
 
 	/**
-	 * The authentication level for the current request.
-	 *
-	 * @var string 'standard'|'privileged'
+	 * Request attribute key for storing the auth level.
 	 */
-	private $auth_level = 'standard';
+	const AUTH_LEVEL_ATTR = '_sendtomp_auth_level';
 
 	/**
 	 * Return the adapter slug.
@@ -131,14 +129,14 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 		// Check privileged key first (more specific).
 		$privileged_hash = isset( $settings['webhook_api_key_privileged_hash'] ) ? $settings['webhook_api_key_privileged_hash'] : '';
 		if ( ! empty( $privileged_hash ) && wp_check_password( $token, $privileged_hash ) ) {
-			$this->auth_level = 'privileged';
+			$request->set_param( self::AUTH_LEVEL_ATTR, 'privileged' );
 			return true;
 		}
 
 		// Check standard key.
 		$standard_hash = isset( $settings['webhook_api_key_hash'] ) ? $settings['webhook_api_key_hash'] : '';
 		if ( ! empty( $standard_hash ) && wp_check_password( $token, $standard_hash ) ) {
-			$this->auth_level = 'standard';
+			$request->set_param( self::AUTH_LEVEL_ATTR, 'standard' );
 			return true;
 		}
 
@@ -174,13 +172,18 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			'message_body'         => sanitize_textarea_field( isset( $body['message_body'] ) ? $body['message_body'] : '' ),
 		];
 
-		$target_house      = sanitize_text_field( isset( $body['target_house'] ) ? $body['target_house'] : 'commons' );
-		$skip_confirmation = ! empty( $body['skip_confirmation'] ) && 'privileged' === $this->auth_level;
+		$target_house = sanitize_text_field( isset( $body['target_house'] ) ? $body['target_house'] : 'commons' );
+		if ( ! in_array( $target_house, [ 'commons', 'lords' ], true ) ) {
+			$target_house = 'commons';
+		}
+
+		$auth_level        = $request->get_param( self::AUTH_LEVEL_ATTR ) ?: 'standard';
+		$skip_confirmation = ! empty( $body['skip_confirmation'] ) && 'privileged' === $auth_level;
 
 		$submission = $this->create_submission( $mapped_data );
 		$submission->source_form_id = 'api';
 		$submission->target_house   = $target_house;
-		$submission->raw_data       = $body;
+		$submission->raw_data       = map_deep( $body, 'sanitize_text_field' );
 
 		if ( $skip_confirmation ) {
 			return $this->process_direct_send( $submission );

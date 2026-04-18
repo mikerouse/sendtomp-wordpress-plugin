@@ -124,7 +124,15 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 	 * @param WPCF7_Submission  $cf7_submission The CF7 submission instance.
 	 * @return void
 	 */
-	public function handle_submission( $contact_form, &$abort, $cf7_submission ): void {
+	public function handle_submission( $contact_form, &$abort, $cf7_submission = null ): void {
+		// Fallback for CF7 < 5.2 where $submission is not passed.
+		if ( ! $cf7_submission && class_exists( 'WPCF7_Submission' ) ) {
+			$cf7_submission = WPCF7_Submission::get_instance();
+		}
+		if ( ! $cf7_submission ) {
+			return;
+		}
+
 		$form_id  = $contact_form->id();
 		$settings = get_post_meta( $form_id, self::META_KEY, true );
 
@@ -303,11 +311,11 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 	public function save_editor_panel( $contact_form ): void {
 		$form_id = $contact_form->id();
 
+		check_admin_referer( 'wpcf7-save-contact-form_' . $form_id );
+
 		if ( ! isset( $_POST['sendtomp-enabled'] ) && ! isset( $_POST['sendtomp-target_house'] ) ) {
 			return;
 		}
-
-		check_admin_referer( 'wpcf7-save-contact-form_' . $form_id );
 
 		$settings = [
 			'enabled'                    => ! empty( $_POST['sendtomp-enabled'] ) ? '1' : '',
