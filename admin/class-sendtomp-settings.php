@@ -937,9 +937,13 @@ class SendToMP_Settings {
 			$sanitized['rate_limit_global'] = absint( $input['rate_limit_global'] );
 		}
 
-		// Branding.
-		$sanitized['show_branding']  = ! empty( $input['show_branding'] );
-		$sanitized['directory_optin'] = ! empty( $input['directory_optin'] );
+		// Branding — only update if a branding-related field was in the submitted form.
+		// This prevents checkbox values resetting when saving from tabs that
+		// don't include these inputs (e.g., the Webhook API tab).
+		if ( isset( $input['show_branding'] ) || isset( $input['campaign_type'] ) ) {
+			$sanitized['show_branding']  = ! empty( $input['show_branding'] );
+			$sanitized['directory_optin'] = ! empty( $input['directory_optin'] );
+		}
 
 		// License.
 		if ( isset( $input['license_key'] ) ) {

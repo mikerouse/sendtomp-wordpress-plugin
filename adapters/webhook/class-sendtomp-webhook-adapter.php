@@ -114,7 +114,7 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			);
 		}
 
-		$token = substr( $header, 7 );
+		$token = trim( substr( $header, 7 ) );
 
 		if ( empty( $token ) ) {
 			return new WP_Error(
@@ -156,7 +156,7 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 	public function handle_submit( WP_REST_Request $request ) {
 		$body = $request->get_json_params();
 
-		if ( empty( $body ) ) {
+		if ( ! is_array( $body ) ) {
 			return new WP_REST_Response( [
 				'success' => false,
 				'error'   => __( 'Request body must be valid JSON.', 'sendtomp' ),

@@ -90,6 +90,7 @@
 				return;
 			}
 
+			var previousLabel = $button.text();
 			$button.prop('disabled', true).text('Generating...');
 
 			$.ajax({
@@ -107,14 +108,16 @@
 						$button.text('Regenerate Key');
 
 						// Select the key for easy copying.
-						$keyInput.on('click', function () {
+						$keyInput.off('click').on('click', function () {
 							this.select();
 						}).trigger('click');
 					} else {
+						$button.text(previousLabel);
 						alert(response.data.message || 'Failed to generate key.');
 					}
 				},
 				error: function () {
+					$button.text(previousLabel);
 					alert('Request failed. Please try again.');
 				},
 				complete: function () {
