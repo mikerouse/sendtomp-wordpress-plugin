@@ -146,6 +146,11 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 		$submission = $this->create_submission( $mapped_data );
 		$submission->source_form_id = (string) $form_data['id'];
 		$submission->target_house   = isset( $settings['target_house'] ) ? sanitize_text_field( $settings['target_house'] ) : 'commons';
+
+		if ( 'lords' === $submission->target_house ) {
+			$submission->target_member_id = isset( $settings['target_member_id'] ) ? (int) $settings['target_member_id'] : 0;
+		}
+
 		$submission->raw_data       = $entry;
 
 		$result = $this->process_submission( $submission );
@@ -231,6 +236,33 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 					'lords'   => esc_html__( 'House of Lords', 'sendtomp' ),
 				],
 				'tooltip' => esc_html__( 'Select which House of Parliament to send messages to.', 'sendtomp' ),
+			]
+		);
+
+		// Target Peer (shown when target_house = 'lords').
+		wpforms_panel_field(
+			'text',
+			'settings',
+			'target_member_id',
+			$instance->form_data,
+			esc_html__( 'Target Peer', 'sendtomp' ),
+			[
+				'parent'     => 'settings',
+				'subsection' => 'sendtomp',
+				'tooltip'    => esc_html__( 'Search and select a Peer (required for House of Lords).', 'sendtomp' ),
+				'class'      => 'sendtomp-peer-search',
+			]
+		);
+
+		wpforms_panel_field(
+			'hidden',
+			'settings',
+			'target_member_name',
+			$instance->form_data,
+			'',
+			[
+				'parent'     => 'settings',
+				'subsection' => 'sendtomp',
 			]
 		);
 

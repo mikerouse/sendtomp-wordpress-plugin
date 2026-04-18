@@ -24,6 +24,13 @@ class SendToMP_API_Client {
 		] );
 	}
 
+	public function resolve_member_by_id( int $member_id, string $house = 'lords' ) {
+		return $this->request( '/resolve-member', [
+			'member_id' => $member_id,
+			'house'     => $house,
+		] );
+	}
+
 	public function search_members( string $query, string $house = 'lords', string $party = '' ) {
 		$body = [
 			'query' => $query,

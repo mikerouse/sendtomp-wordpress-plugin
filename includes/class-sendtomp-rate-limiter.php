@@ -26,9 +26,19 @@ class SendToMP_Rate_Limiter {
 			return new WP_Error( 'rate_limit_ip', 'Too many messages have been sent from your location today. Please try again tomorrow.' );
 		}
 
-		$postcode_limit = $this->get_limit( 'postcode' );
-		if ( ! $this->check_rate( 'postcode', $submission->constituent_postcode, $postcode_limit ) ) {
-			return new WP_Error( 'rate_limit_postcode', 'Too many messages have been sent from your postcode area today. Please try again tomorrow.' );
+		if ( ! empty( $submission->constituent_postcode ) ) {
+			$postcode_limit = $this->get_limit( 'postcode' );
+			if ( ! $this->check_rate( 'postcode', $submission->constituent_postcode, $postcode_limit ) ) {
+				return new WP_Error( 'rate_limit_postcode', 'Too many messages have been sent from your postcode area today. Please try again tomorrow.' );
+			}
+		}
+
+		// Per-member rate limit for Lords (reuses postcode limit value).
+		if ( 'lords' === $submission->target_house && $submission->target_member_id > 0 ) {
+			$member_limit = $this->get_limit( 'postcode' );
+			if ( ! $this->check_rate( 'member', (string) $submission->target_member_id, $member_limit ) ) {
+				return new WP_Error( 'rate_limit_member', 'Too many messages have been sent to this Peer today. Please try again tomorrow.' );
+			}
 		}
 
 		$global_limit = $this->get_limit( 'global' );

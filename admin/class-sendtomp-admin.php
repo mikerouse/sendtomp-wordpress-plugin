@@ -107,6 +107,14 @@ class SendToMP_Admin {
 			'ajax_url' => admin_url( 'admin-ajax.php' ),
 			'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
 		] );
+
+		wp_enqueue_script(
+			'sendtomp-peer-search',
+			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
+			[ 'jquery', 'sendtomp-admin' ],
+			SENDTOMP_VERSION,
+			true
+		);
 	}
 
 	/**

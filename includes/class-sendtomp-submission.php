@@ -54,10 +54,12 @@ class SendToMP_Submission {
 			$errors->add( 'invalid_email', 'A valid email address is required.' );
 		}
 
-		if ( empty( trim( $this->constituent_postcode ) ) ) {
-			$errors->add( 'missing_postcode', 'Postcode is required.' );
-		} elseif ( ! preg_match( '/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i', trim( $this->constituent_postcode ) ) ) {
-			$errors->add( 'invalid_postcode', 'A valid UK postcode is required.' );
+		if ( 'commons' === $this->target_house ) {
+			if ( empty( trim( $this->constituent_postcode ) ) ) {
+				$errors->add( 'missing_postcode', 'Postcode is required.' );
+			} elseif ( ! preg_match( '/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i', trim( $this->constituent_postcode ) ) ) {
+				$errors->add( 'invalid_postcode', 'A valid UK postcode is required.' );
+			}
 		}
 
 		if ( empty( trim( $this->message_body ) ) ) {
@@ -68,9 +70,9 @@ class SendToMP_Submission {
 			$errors->add( 'invalid_house', 'Target house must be commons or lords.' );
 		}
 
-		// Note: target_member_id is validated post-API-resolution, not here.
-		// For Commons, it's resolved from postcode. For Lords (Phase 4), it's
-		// selected from a search UI and set before the API call.
+		if ( 'lords' === $this->target_house && $this->target_member_id < 1 ) {
+			$errors->add( 'missing_member_id', 'A target Peer must be selected for House of Lords submissions.' );
+		}
 
 		if ( $errors->has_errors() ) {
 			return $errors;
@@ -111,6 +113,10 @@ class SendToMP_Submission {
 	}
 
 	public function get_hash(): string {
-		return hash( 'sha256', $this->constituent_email . '|' . $this->constituent_postcode . '|' . $this->message_body );
+		$identifier = 'lords' === $this->target_house
+			? (string) $this->target_member_id
+			: $this->constituent_postcode;
+
+		return hash( 'sha256', $this->constituent_email . '|' . $identifier . '|' . $this->message_body );
 	}
 }
