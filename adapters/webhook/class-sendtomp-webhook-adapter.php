@@ -92,6 +92,59 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			'methods'             => 'POST',
 			'callback'            => [ $this, 'handle_submit' ],
 			'permission_callback' => [ $this, 'authenticate' ],
+			'args'                => [
+				'constituent_name' => [
+					'type'              => 'string',
+					'required'          => true,
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => __( 'Full name of the constituent.', 'sendtomp' ),
+				],
+				'constituent_email' => [
+					'type'              => 'string',
+					'required'          => true,
+					'format'            => 'email',
+					'sanitize_callback' => 'sanitize_email',
+					'description'       => __( 'Email address of the constituent.', 'sendtomp' ),
+				],
+				'constituent_postcode' => [
+					'type'              => 'string',
+					'required'          => true,
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => __( 'UK postcode of the constituent.', 'sendtomp' ),
+				],
+				'constituent_address' => [
+					'type'              => 'string',
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => __( 'Full address of the constituent.', 'sendtomp' ),
+				],
+				'message_subject' => [
+					'type'              => 'string',
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => __( 'Subject line for the message.', 'sendtomp' ),
+				],
+				'message_body' => [
+					'type'              => 'string',
+					'required'          => true,
+					'sanitize_callback' => 'sanitize_textarea_field',
+					'description'       => __( 'The message body to send to the MP.', 'sendtomp' ),
+				],
+				'target_house' => [
+					'type'              => 'string',
+					'required'          => false,
+					'default'           => 'commons',
+					'enum'              => [ 'commons', 'lords' ],
+					'sanitize_callback' => 'sanitize_text_field',
+					'description'       => __( 'Target house: commons or lords.', 'sendtomp' ),
+				],
+				'skip_confirmation' => [
+					'type'              => 'boolean',
+					'required'          => false,
+					'default'           => false,
+					'description'       => __( 'Skip double opt-in (privileged key only).', 'sendtomp' ),
+				],
+			],
 		] );
 	}
 
@@ -140,6 +193,21 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			return true;
 		}
 
+		// Track failed attempts by IP to prevent brute-force.
+		$ip            = SendToMP_Pipeline::get_client_ip();
+		$transient_key = 'sendtomp_auth_fail_' . md5( $ip );
+		$failures      = (int) get_transient( $transient_key );
+
+		if ( $failures >= 10 ) {
+			return new WP_Error(
+				'rest_forbidden',
+				__( 'Too many failed authentication attempts. Try again later.', 'sendtomp' ),
+				[ 'status' => 429 ]
+			);
+		}
+
+		set_transient( $transient_key, $failures + 1, MINUTE_IN_SECONDS );
+
 		return new WP_Error(
 			'rest_forbidden',
 			__( 'Invalid API key.', 'sendtomp' ),
@@ -185,12 +253,10 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 		$submission->target_house   = $target_house;
 		$submission->raw_data       = map_deep( $body, 'sanitize_text_field' );
 
-		if ( $skip_confirmation ) {
-			return $this->process_direct_send( $submission );
-		}
-
-		// Normal double opt-in flow.
-		$result = $this->process_submission( $submission );
+		// Run through the shared pipeline (with or without confirmation).
+		$result = SendToMP_Pipeline::process( $submission, [
+			'skip_confirmation' => $skip_confirmation,
+		] );
 
 		if ( is_wp_error( $result ) ) {
 			$status = $this->error_to_status( $result );
@@ -202,102 +268,24 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			], $status );
 		}
 
+		if ( $skip_confirmation ) {
+			return new WP_REST_Response( [
+				'success'              => true,
+				'skipped_confirmation' => true,
+				'member'               => [
+					'name'         => $submission->resolved_member['name'],
+					'party'        => $submission->resolved_member['party'],
+					'constituency' => $submission->resolved_member['constituency'],
+				],
+				'message' => __( 'Message sent directly to MP.', 'sendtomp' ),
+			], 200 );
+		}
+
 		return new WP_REST_Response( [
 			'success'              => true,
 			'skipped_confirmation' => false,
 			'message'              => __( 'Confirmation email sent. The constituent must confirm before the message is delivered.', 'sendtomp' ),
 		], 202 );
-	}
-
-	// -------------------------------------------------------------------------
-	// Direct send (skip_confirmation)
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Process a submission without the double opt-in confirmation step.
-	 *
-	 * Runs validation, rate-limiting, and member resolution, then sends
-	 * directly to the MP. Only available with a privileged API key.
-	 *
-	 * @param SendToMP_Submission $submission The submission to process.
-	 * @return WP_REST_Response
-	 */
-	private function process_direct_send( SendToMP_Submission $submission ): WP_REST_Response {
-		// 1. Normalise postcode.
-		$submission->normalise_postcode();
-
-		// 2. Validate.
-		$valid = $submission->validate();
-		if ( is_wp_error( $valid ) ) {
-			return new WP_REST_Response( [
-				'success' => false,
-				'error'   => $valid->get_error_message(),
-				'code'    => $valid->get_error_code(),
-			], 422 );
-		}
-
-		// 3. Rate-limit check.
-		$rate_check = ( new SendToMP_Rate_Limiter() )->check( $submission );
-		if ( is_wp_error( $rate_check ) ) {
-			return new WP_REST_Response( [
-				'success' => false,
-				'error'   => $rate_check->get_error_message(),
-				'code'    => $rate_check->get_error_code(),
-			], 429 );
-		}
-
-		// 4. Resolve member.
-		$api_response = ( new SendToMP_API_Client() )->resolve_member(
-			$submission->constituent_postcode,
-			$submission->target_house
-		);
-		if ( is_wp_error( $api_response ) ) {
-			return new WP_REST_Response( [
-				'success' => false,
-				'error'   => $api_response->get_error_message(),
-				'code'    => $api_response->get_error_code(),
-			], 502 );
-		}
-
-		// 5. Build resolved_member.
-		$member   = isset( $api_response['member'] ) ? $api_response['member'] : [];
-		$delivery = isset( $api_response['delivery'] ) ? $api_response['delivery'] : [];
-
-		$submission->resolved_member = [
-			'id'               => isset( $member['id'] ) ? (int) $member['id'] : 0,
-			'name'             => isset( $member['name'] ) ? $member['name'] : '',
-			'party'            => isset( $member['party'] ) ? $member['party'] : '',
-			'constituency'     => isset( $member['constituency'] ) ? $member['constituency'] : '',
-			'house'            => isset( $member['house'] ) ? $member['house'] : $submission->target_house,
-			'delivery_email'   => isset( $delivery['email'] ) ? $delivery['email'] : '',
-			'override_applied' => isset( $delivery['override_applied'] ) ? $delivery['override_applied'] : false,
-		];
-
-		$submission->target_member_id = $submission->resolved_member['id'];
-
-		// 6. Send directly to MP (no confirmation).
-		$mail_result = ( new SendToMP_Mailer() )->send_to_mp( $submission );
-		if ( is_wp_error( $mail_result ) ) {
-			return new WP_REST_Response( [
-				'success' => false,
-				'error'   => $mail_result->get_error_message(),
-				'code'    => $mail_result->get_error_code(),
-			], 502 );
-		}
-
-		// 7. Log as directly sent.
-		SendToMP_Logger::log( $submission, 'confirmed_and_sent' );
-
-		return new WP_REST_Response( [
-			'success'              => true,
-			'skipped_confirmation' => true,
-			'member'               => [
-				'name'         => $submission->resolved_member['name'],
-				'party'        => $submission->resolved_member['party'],
-				'constituency' => $submission->resolved_member['constituency'],
-			],
-			'message' => __( 'Message sent directly to MP.', 'sendtomp' ),
-		], 200 );
 	}
 
 	// -------------------------------------------------------------------------
