@@ -19,10 +19,16 @@ class SendToMP_Pipeline {
 	 * Expects the submission to already have source_adapter, source_form_id,
 	 * target_house, metadata, and raw_data set by the calling adapter.
 	 *
-	 * @param SendToMP_Submission $submission The submission to process.
+	 * @param SendToMP_Submission $submission        The submission to process.
+	 * @param array               $options           Pipeline options.
+	 *     @type bool $skip_confirmation When true, sends directly to the MP
+	 *                                   without the double opt-in confirmation
+	 *                                   step. Use only with verified callers.
 	 * @return true|WP_Error True on success, WP_Error on failure.
 	 */
-	public static function process( SendToMP_Submission $submission ) {
+	public static function process( SendToMP_Submission $submission, array $options = [] ) {
+		$skip_confirmation = ! empty( $options['skip_confirmation'] );
+
 		// 1. Normalise postcode.
 		$submission->normalise_postcode();
 
@@ -63,13 +69,25 @@ class SendToMP_Pipeline {
 
 		$submission->target_member_id = $submission->resolved_member['id'];
 
-		// 6. Store pending submission and get confirmation token.
+		// 6. Direct send path — skip confirmation, send directly to MP.
+		if ( $skip_confirmation ) {
+			$mail_result = ( new SendToMP_Mailer() )->send_to_mp( $submission );
+			if ( is_wp_error( $mail_result ) ) {
+				return $mail_result;
+			}
+
+			SendToMP_Logger::log( $submission, 'confirmed_and_sent' );
+
+			return true;
+		}
+
+		// 7. Store pending submission and get confirmation token.
 		$token = ( new SendToMP_Confirmation() )->store_pending( $submission, $submission->resolved_member );
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
 
-		// 7. Send confirmation email.
+		// 8. Send confirmation email.
 		$mail_result = ( new SendToMP_Mailer() )->send_confirmation(
 			$submission,
 			$token,
@@ -80,7 +98,7 @@ class SendToMP_Pipeline {
 			return $mail_result;
 		}
 
-		// 8. Log as pending_confirmation.
+		// 9. Log as pending_confirmation.
 		SendToMP_Logger::log( $submission, 'pending_confirmation' );
 
 		return true;

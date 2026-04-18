@@ -256,7 +256,7 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 
 		if ( ! empty( $instance->form_data['fields'] ) ) {
 			foreach ( $instance->form_data['fields'] as $field ) {
-				$field_options[ $field['id'] ] = $field['label'];
+				$field_options[ $field['id'] ] = esc_html( $field['label'] );
 			}
 		}
 

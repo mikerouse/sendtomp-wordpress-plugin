@@ -58,6 +58,10 @@ class SendToMP {
 	}
 
 	private function detect_adapters() {
+		if ( ! empty( $this->adapters ) ) {
+			return;
+		}
+
 		// Gravity Forms adapter — uses GF's addon registration system.
 		if ( class_exists( 'GFForms' ) ) {
 			require_once SENDTOMP_PLUGIN_DIR . 'adapters/gravity-forms/class-sendtomp-gf-adapter.php';
