@@ -21,6 +21,7 @@ class SendToMP_Settings {
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
 		add_action( 'wp_ajax_sendtomp_test_email', [ $this, 'handle_test_email' ] );
 		add_action( 'wp_ajax_sendtomp_purge_logs', [ $this, 'handle_purge_logs' ] );
+		add_action( 'wp_ajax_sendtomp_generate_webhook_key', [ $this, 'handle_generate_webhook_key' ] );
 	}
 
 	/**
@@ -52,6 +53,10 @@ class SendToMP_Settings {
 
 			case 'rate-limits':
 				$this->register_rate_limit_fields();
+				break;
+
+			case 'webhook':
+				$this->register_webhook_fields();
 				break;
 
 			case 'license':
@@ -497,6 +502,174 @@ class SendToMP_Settings {
 	}
 
 	/**
+	 * Register Webhook API tab fields.
+	 *
+	 * @return void
+	 */
+	private function register_webhook_fields(): void {
+		$section = 'sendtomp_webhook_section';
+
+		add_settings_section(
+			$section,
+			__( 'Webhook API', 'sendtomp' ),
+			function () {
+				echo '<p>' . esc_html__( 'Allow external systems to submit messages via the REST API.', 'sendtomp' ) . '</p>';
+			},
+			'sendtomp'
+		);
+
+		add_settings_field(
+			'webhook_endpoint',
+			__( 'Endpoint URL', 'sendtomp' ),
+			[ $this, 'render_webhook_endpoint' ],
+			'sendtomp',
+			$section
+		);
+
+		add_settings_field(
+			'webhook_api_key',
+			__( 'Standard API Key', 'sendtomp' ),
+			[ $this, 'render_api_key_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key_type'    => 'standard',
+				'hash_key'    => 'webhook_api_key_hash',
+				'description' => __( 'Used for normal submissions (double opt-in confirmation required).', 'sendtomp' ),
+			]
+		);
+
+		add_settings_field(
+			'webhook_api_key_privileged',
+			__( 'Privileged API Key', 'sendtomp' ),
+			[ $this, 'render_api_key_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key_type'    => 'privileged',
+				'hash_key'    => 'webhook_api_key_privileged_hash',
+				'description' => __( 'Allows skip_confirmation to send directly without double opt-in. Use with caution — ensure GDPR compliance.', 'sendtomp' ),
+			]
+		);
+
+		add_settings_field(
+			'webhook_docs',
+			__( 'Usage', 'sendtomp' ),
+			[ $this, 'render_webhook_docs' ],
+			'sendtomp',
+			$section
+		);
+	}
+
+	/**
+	 * Render the webhook endpoint URL.
+	 *
+	 * @return void
+	 */
+	public function render_webhook_endpoint(): void {
+		$url = rest_url( 'sendtomp/v1/submit' );
+		echo '<code>' . esc_html( $url ) . '</code>';
+		echo '<p class="description">' . esc_html__( 'POST JSON to this endpoint with an Authorization header.', 'sendtomp' ) . '</p>';
+	}
+
+	/**
+	 * Render an API key field with masked display and regenerate button.
+	 *
+	 * @param array $args Field arguments including key_type and hash_key.
+	 * @return void
+	 */
+	public function render_api_key_field( array $args ): void {
+		$hash_key = $args['hash_key'];
+		$key_type = $args['key_type'];
+		$has_key  = ! empty( sendtomp()->get_setting( $hash_key ) );
+
+		$status = $has_key
+			? '<span style="color: green;">&#10003; ' . esc_html__( 'Key is set', 'sendtomp' ) . '</span>'
+			: '<span style="color: #999;">' . esc_html__( 'No key generated yet', 'sendtomp' ) . '</span>';
+
+		echo '<div id="sendtomp-webhook-key-' . esc_attr( $key_type ) . '">';
+		echo '<p>' . $status . '</p>';
+		echo '<button type="button" class="button button-secondary sendtomp-generate-key" data-key-type="' . esc_attr( $key_type ) . '">';
+		echo esc_html( $has_key ? __( 'Regenerate Key', 'sendtomp' ) : __( 'Generate Key', 'sendtomp' ) );
+		echo '</button>';
+		echo '<div class="sendtomp-key-result" style="display:none; margin-top: 10px;">';
+		echo '<p><strong>' . esc_html__( 'Copy this key now — it will not be shown again:', 'sendtomp' ) . '</strong></p>';
+		echo '<input type="text" class="regular-text sendtomp-key-display" readonly style="font-family: monospace;" />';
+		echo '</div>';
+		echo '</div>';
+
+		if ( ! empty( $args['description'] ) ) {
+			echo '<p class="description">' . esc_html( $args['description'] ) . '</p>';
+		}
+	}
+
+	/**
+	 * Render inline webhook API documentation.
+	 *
+	 * @return void
+	 */
+	public function render_webhook_docs(): void {
+		$url = rest_url( 'sendtomp/v1/submit' );
+
+		echo '<details>';
+		echo '<summary style="cursor: pointer; font-weight: 600;">' . esc_html__( 'Example request (click to expand)', 'sendtomp' ) . '</summary>';
+		echo '<pre style="background: #f0f0f0; padding: 12px; margin-top: 8px; overflow-x: auto;">';
+		echo esc_html( 'curl -X POST ' . $url . " \\\n" );
+		echo esc_html( "  -H \"Content-Type: application/json\" \\\n" );
+		echo esc_html( "  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n" );
+		echo esc_html( "  -d '{\n" );
+		echo esc_html( "    \"constituent_name\": \"Jane Smith\",\n" );
+		echo esc_html( "    \"constituent_email\": \"jane@example.com\",\n" );
+		echo esc_html( "    \"constituent_postcode\": \"SW1A 1AA\",\n" );
+		echo esc_html( "    \"message_body\": \"Dear MP, ...\",\n" );
+		echo esc_html( "    \"target_house\": \"commons\"\n" );
+		echo esc_html( "  }'" );
+		echo '</pre>';
+
+		echo '<p><strong>' . esc_html__( 'Required fields:', 'sendtomp' ) . '</strong> ';
+		echo esc_html( 'constituent_name, constituent_email, constituent_postcode, message_body' ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Optional fields:', 'sendtomp' ) . '</strong> ';
+		echo esc_html( 'constituent_address, message_subject, target_house (default: commons), skip_confirmation (privileged key only)' ) . '</p>';
+		echo '</details>';
+	}
+
+	/**
+	 * AJAX handler — generate a webhook API key.
+	 *
+	 * @return void
+	 */
+	public function handle_generate_webhook_key(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'You do not have permission to perform this action.', 'sendtomp' ) ] );
+		}
+
+		$key_type = isset( $_POST['key_type'] ) ? sanitize_text_field( wp_unslash( $_POST['key_type'] ) ) : '';
+
+		if ( ! in_array( $key_type, [ 'standard', 'privileged' ], true ) ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid key type.', 'sendtomp' ) ] );
+		}
+
+		$raw_key = wp_generate_password( 40, false, false );
+		$hash    = wp_hash_password( $raw_key );
+
+		$option_key = 'standard' === $key_type ? 'webhook_api_key_hash' : 'webhook_api_key_privileged_hash';
+
+		$settings = get_option( 'sendtomp_settings', [] );
+		$settings[ $option_key ] = $hash;
+		update_option( 'sendtomp_settings', $settings );
+
+		// Flush settings cache so the UI reflects the change.
+		sendtomp()->flush_settings_cache();
+
+		wp_send_json_success( [
+			'key'     => $raw_key,
+			'message' => __( 'API key generated. Copy it now — it will not be shown again.', 'sendtomp' ),
+		] );
+	}
+
+	/**
 	 * Render a text input field.
 	 *
 	 * @param array $args Field arguments.
@@ -836,7 +1009,7 @@ class SendToMP_Settings {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
 
-		$valid_tabs = [ 'general', 'email', 'confirmation', 'rate-limits', 'license', 'log' ];
+		$valid_tabs = [ 'general', 'email', 'confirmation', 'rate-limits', 'webhook', 'license', 'log' ];
 
 		if ( ! in_array( $tab, $valid_tabs, true ) ) {
 			$tab = 'general';

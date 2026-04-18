@@ -7,6 +7,7 @@ $tabs = array(
 	'email'        => 'Email',
 	'confirmation' => 'Confirmation',
 	'rate-limits'  => 'Rate Limits',
+	'webhook'      => 'Webhook API',
 	'license'      => 'License',
 	'log'          => 'Log',
 );

@@ -65,19 +65,28 @@ class SendToMP {
 			$this->adapters['gravity-forms'] = SendToMP_GF_Adapter::get_instance();
 		}
 
-		// WPForms adapter (Plus+ tier, Phase 3)
+		// WPForms adapter (Plus+ tier).
 		if ( function_exists( 'wpforms' ) && $this->can( 'wpforms_adapter' ) ) {
-			// $this->adapters['wpforms'] = new SendToMP_WPForms_Adapter();
+			require_once SENDTOMP_PLUGIN_DIR . 'adapters/wpforms/class-sendtomp-wpforms-adapter.php';
+			$adapter = new SendToMP_WPForms_Adapter();
+			$adapter->register_hooks();
+			$this->adapters['wpforms'] = $adapter;
 		}
 
-		// Contact Form 7 adapter (Plus+ tier, Phase 3)
+		// Contact Form 7 adapter (Plus+ tier).
 		if ( defined( 'WPCF7_VERSION' ) && $this->can( 'cf7_adapter' ) ) {
-			// $this->adapters['cf7'] = new SendToMP_CF7_Adapter();
+			require_once SENDTOMP_PLUGIN_DIR . 'adapters/contact-form-7/class-sendtomp-cf7-adapter.php';
+			$adapter = new SendToMP_CF7_Adapter();
+			$adapter->register_hooks();
+			$this->adapters['cf7'] = $adapter;
 		}
 
-		// Webhook adapter (Pro tier, Phase 3)
+		// Webhook adapter (Pro tier).
 		if ( $this->can( 'webhook_api' ) ) {
-			// $this->adapters['webhook'] = new SendToMP_Webhook_Adapter();
+			require_once SENDTOMP_PLUGIN_DIR . 'adapters/webhook/class-sendtomp-webhook-adapter.php';
+			$adapter = new SendToMP_Webhook_Adapter();
+			$adapter->register_hooks();
+			$this->adapters['webhook'] = $adapter;
 		}
 	}
 
@@ -113,7 +122,9 @@ class SendToMP {
 			'log_retention'       => 90,
 			'show_branding'       => true,
 			'directory_optin'     => false,
-			'license_key'         => '',
+			'license_key'                     => '',
+			'webhook_api_key_hash'            => '',
+			'webhook_api_key_privileged_hash' => '',
 		);
 
 		$saved = get_option( 'sendtomp_settings', array() );
