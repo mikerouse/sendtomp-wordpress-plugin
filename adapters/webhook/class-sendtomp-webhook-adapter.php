@@ -177,6 +177,19 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			);
 		}
 
+		// Check failed-attempt lockout before doing any expensive hash work.
+		$ip            = SendToMP_Pipeline::get_client_ip();
+		$transient_key = 'sendtomp_auth_fail_' . md5( $ip );
+		$failures      = (int) get_transient( $transient_key );
+
+		if ( $failures >= 10 ) {
+			return new WP_Error(
+				'rest_forbidden',
+				__( 'Too many failed authentication attempts. Try again later.', 'sendtomp' ),
+				[ 'status' => 429 ]
+			);
+		}
+
 		$settings = sendtomp()->get_settings();
 
 		// Check privileged key first (more specific).
@@ -193,19 +206,7 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			return true;
 		}
 
-		// Track failed attempts by IP to prevent brute-force.
-		$ip            = SendToMP_Pipeline::get_client_ip();
-		$transient_key = 'sendtomp_auth_fail_' . md5( $ip );
-		$failures      = (int) get_transient( $transient_key );
-
-		if ( $failures >= 10 ) {
-			return new WP_Error(
-				'rest_forbidden',
-				__( 'Too many failed authentication attempts. Try again later.', 'sendtomp' ),
-				[ 'status' => 429 ]
-			);
-		}
-
+		// Record the failure for rate-limiting.
 		set_transient( $transient_key, $failures + 1, MINUTE_IN_SECONDS );
 
 		return new WP_Error(
@@ -246,7 +247,7 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 		}
 
 		$auth_level        = $request->get_param( self::AUTH_LEVEL_ATTR ) ?: 'standard';
-		$skip_confirmation = ! empty( $body['skip_confirmation'] ) && 'privileged' === $auth_level;
+		$skip_confirmation = true === $request->get_param( 'skip_confirmation' ) && 'privileged' === $auth_level;
 
 		$submission = $this->create_submission( $mapped_data );
 		$submission->source_form_id = 'api';

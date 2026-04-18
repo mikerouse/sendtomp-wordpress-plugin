@@ -27,7 +27,8 @@ class SendToMP_Pipeline {
 	 * @return true|WP_Error True on success, WP_Error on failure.
 	 */
 	public static function process( SendToMP_Submission $submission, array $options = [] ) {
-		$skip_confirmation = ! empty( $options['skip_confirmation'] );
+		$skip_confirmation = isset( $options['skip_confirmation'] ) && true === $options['skip_confirmation'];
+
 		// 1. Normalise postcode.
 		$submission->normalise_postcode();
 
