@@ -325,17 +325,6 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 			true
 		);
 
-		wp_enqueue_script(
-			'sendtomp-peer-search',
-			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
-			[ 'jquery' ],
-			SENDTOMP_VERSION,
-			true
-		);
-
-		wp_localize_script( 'sendtomp-peer-search', 'sendtomp_peer_search', [
-			'ajax_url' => admin_url( 'admin-ajax.php' ),
-			'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
-		] );
+		SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 	}
 }

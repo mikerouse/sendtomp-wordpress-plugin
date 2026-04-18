@@ -112,6 +112,12 @@ class SendToMP_Submission {
 		];
 	}
 
+	public function is_shared_inbox(): bool {
+		return 'lords' === $this->target_house
+			&& isset( $this->resolved_member['contact_quality'] )
+			&& 'shared' === $this->resolved_member['contact_quality'];
+	}
+
 	public function get_hash(): string {
 		$identifier = 'lords' === $this->target_house
 			? (string) $this->target_member_id

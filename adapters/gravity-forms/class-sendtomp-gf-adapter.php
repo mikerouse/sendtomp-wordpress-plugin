@@ -68,22 +68,15 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	public function scripts() {
 		return array_merge( parent::scripts(), [
 			[
-				'handle'    => 'sendtomp-peer-search',
-				'src'       => SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
-				'version'   => $this->_version,
-				'deps'      => [ 'jquery' ],
-				'enqueue'   => [
+				'handle'   => 'sendtomp-peer-search',
+				'src'      => SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
+				'version'  => $this->_version,
+				'deps'     => [ 'jquery' ],
+				'enqueue'  => [
 					[ 'admin_page' => [ 'form_settings' ] ],
 				],
-				'strings'   => [
-					'ajax_url' => admin_url( 'admin-ajax.php' ),
-					'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
-				],
 				'callback' => function() {
-					wp_localize_script( 'sendtomp-peer-search', 'sendtomp_peer_search', [
-						'ajax_url' => admin_url( 'admin-ajax.php' ),
-						'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
-					] );
+					SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 				},
 			],
 		] );
@@ -329,7 +322,7 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 
 		// Build the submission with consistent metadata keys.
 		$submission = new SendToMP_Submission( $mapped_data );
-		$submission->source_adapter = 'gravity-forms';
+		$submission->source_adapter = $this->get_slug();
 		$submission->source_form_id = (string) $form['id'];
 		$submission->target_house   = rgar( $feed['meta'], 'target_house', 'commons' );
 
@@ -357,6 +350,8 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 				$entry,
 				$form
 			);
+
+			SendToMP_Logger::log( $submission, 'error', $result->get_error_message() );
 		}
 	}
 

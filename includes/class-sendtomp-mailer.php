@@ -36,9 +36,7 @@ class SendToMP_Mailer {
 		$subject = $this->replace_placeholders( $settings['subject_template'], $submission );
 
 		// For Lords with shared inbox, prepend FAO to subject.
-		if ( 'lords' === $submission->target_house
-			&& isset( $submission->resolved_member['contact_quality'] )
-			&& 'shared' === $submission->resolved_member['contact_quality'] ) {
+		if ( $submission->is_shared_inbox() ) {
 			$subject = 'FAO: ' . $submission->resolved_member['name'] . ' - ' . $subject;
 		}
 
@@ -131,9 +129,7 @@ class SendToMP_Mailer {
 		$footer  = "---\n";
 
 		// Shared inbox transparency for Lords.
-		if ( 'lords' === $submission->target_house
-			&& isset( $submission->resolved_member['contact_quality'] )
-			&& 'shared' === $submission->resolved_member['contact_quality'] ) {
+		if ( $submission->is_shared_inbox() ) {
 			$footer .= 'Note: This message is intended for the attention of ' . $submission->resolved_member['name'] . ".\n\n";
 		}
 

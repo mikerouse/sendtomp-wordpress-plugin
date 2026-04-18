@@ -11,7 +11,6 @@
 jQuery( function( $ ) {
 	'use strict';
 
-	var debounceTimer;
 
 	function getAjaxConfig() {
 		if ( typeof sendtomp_admin !== 'undefined' ) {
@@ -60,7 +59,7 @@ jQuery( function( $ ) {
 		$input.on( 'input', function() {
 			var query = $.trim( $input.val() );
 
-			clearTimeout( debounceTimer );
+			clearTimeout( $input.data( 'debounceTimer' ) );
 
 			if ( query.length < 2 ) {
 				$results.hide().empty();
@@ -69,7 +68,7 @@ jQuery( function( $ ) {
 
 			var config = getAjaxConfig();
 
-			debounceTimer = setTimeout( function() {
+			$input.data( 'debounceTimer', setTimeout( function() {
 				$.ajax( {
 					url: config.url,
 					type: 'POST',
@@ -143,7 +142,7 @@ jQuery( function( $ ) {
 						$results.show();
 					}
 				} );
-			}, 300 );
+			}, 300 ) );
 		} );
 
 		// Hide results when clicking outside.

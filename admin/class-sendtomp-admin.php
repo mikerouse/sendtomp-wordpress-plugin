@@ -108,13 +108,7 @@ class SendToMP_Admin {
 			'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
 		] );
 
-		wp_enqueue_script(
-			'sendtomp-peer-search',
-			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
-			[ 'jquery', 'sendtomp-admin' ],
-			SENDTOMP_VERSION,
-			true
-		);
+		SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 	}
 
 	/**
