@@ -5,20 +5,36 @@
  * Used by GF feed settings, WPForms builder, and CF7 editor
  * to search for and select Lords members.
  *
- * Expects sendtomp_admin.ajax_url and sendtomp_admin.nonce to be
- * available (localised by SendToMP_Admin::enqueue_assets).
+ * Uses sendtomp_admin.ajax_url/nonce when available, falls back
+ * to the WordPress global ajaxurl for non-SendToMP admin pages.
  */
 jQuery( function( $ ) {
 	'use strict';
 
 	var debounceTimer;
 
+	function getAjaxConfig() {
+		if ( typeof sendtomp_admin !== 'undefined' ) {
+			return { url: sendtomp_admin.ajax_url, nonce: sendtomp_admin.nonce };
+		}
+		if ( typeof sendtomp_peer_search !== 'undefined' ) {
+			return { url: sendtomp_peer_search.ajax_url, nonce: sendtomp_peer_search.nonce };
+		}
+		return { url: ( typeof ajaxurl !== 'undefined' ? ajaxurl : '' ), nonce: '' };
+	}
+
 	function initPeerSearch( $input ) {
+		// Mark as initialised immediately to prevent double-init.
+		$input.addClass( 'sendtomp-peer-search-init' );
+
 		var $container = $input.parent();
 		var $results   = $( '<div class="sendtomp-peer-results"></div>' ).appendTo( $container );
-		var $hidden    = $container.find( 'input[type="hidden"]' ).first();
 
-		// If no hidden input found, look for sibling by naming convention.
+		// Find the hidden member ID input — look for input with name containing target_member_id.
+		var $hidden = $container.find( 'input[type="hidden"][name*="target_member_id"]' ).first();
+		if ( ! $hidden.length ) {
+			$hidden = $container.find( 'input[type="hidden"]' ).first();
+		}
 		if ( ! $hidden.length ) {
 			var hiddenId = $input.attr( 'id' );
 			if ( hiddenId ) {
@@ -51,20 +67,22 @@ jQuery( function( $ ) {
 				return;
 			}
 
+			var config = getAjaxConfig();
+
 			debounceTimer = setTimeout( function() {
 				$.ajax( {
-					url: sendtomp_admin.ajax_url,
+					url: config.url,
 					type: 'POST',
 					data: {
 						action: 'sendtomp_search_members',
-						nonce: sendtomp_admin.nonce,
+						nonce: config.nonce,
 						query: query,
 						house: 'lords'
 					},
 					success: function( response ) {
 						$results.empty();
 
-						if ( ! response.success || ! response.data.results || ! response.data.results.length ) {
+						if ( ! response.success || ! response.data.results ) {
 							$results.append(
 								$( '<div>' ).css( { padding: '8px 12px', color: '#999', fontSize: '0.9em' } )
 									.text( 'No results found.' )
@@ -75,9 +93,18 @@ jQuery( function( $ ) {
 
 						var members = response.data.results;
 
-						// Handle both array and {members: []} shapes.
-						if ( members.members ) {
+						// Normalise: handle both array and {members: []} shapes.
+						if ( ! Array.isArray( members ) && members.members ) {
 							members = members.members;
+						}
+
+						if ( ! members.length ) {
+							$results.append(
+								$( '<div>' ).css( { padding: '8px 12px', color: '#999', fontSize: '0.9em' } )
+									.text( 'No results found.' )
+							);
+							$results.show();
+							return;
 						}
 
 						$.each( members, function( _, member ) {
@@ -108,9 +135,6 @@ jQuery( function( $ ) {
 									$hidden.val( m.id ).trigger( 'change' );
 								}
 								$results.hide().empty();
-
-								// Also set any sibling name display field.
-								$container.find( '.sendtomp-peer-name-display' ).text( m.name + ' (' + ( m.party || '' ) + ')' );
 							} );
 
 							$results.append( $item );
@@ -123,7 +147,7 @@ jQuery( function( $ ) {
 		} );
 
 		// Hide results when clicking outside.
-		$( document ).on( 'click', function( e ) {
+		$( document ).on( 'click.sendtompPeerSearch', function( e ) {
 			if ( ! $( e.target ).closest( $container ).length ) {
 				$results.hide();
 			}
@@ -137,14 +161,14 @@ jQuery( function( $ ) {
 		} );
 	}
 
-	// Initialise all peer search inputs on the page.
+	// Initialise all peer search inputs on the page (mark to prevent re-init).
 	$( '.sendtomp-peer-search' ).each( function() {
+		$( this ).addClass( 'sendtomp-peer-search-init' );
 		initPeerSearch( $( this ) );
 	} );
 
 	// Re-init for dynamically added inputs (e.g., GF feed settings loaded via AJAX).
 	$( document ).on( 'focus', '.sendtomp-peer-search:not(.sendtomp-peer-search-init)', function() {
-		$( this ).addClass( 'sendtomp-peer-search-init' );
 		initPeerSearch( $( this ) );
 	} );
 } );

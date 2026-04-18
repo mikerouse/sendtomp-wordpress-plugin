@@ -592,8 +592,11 @@ class SendToMP_Confirmation {
 		$share_url    = rawurlencode( home_url( '/' ) );
 		$twitter_url  = 'https://twitter.com/intent/tweet?text=' . $share_text . '&url=' . $share_url;
 		$facebook_url = 'https://www.facebook.com/sharer/sharer.php?u=' . $share_url;
-		$email_subject = rawurlencode( sprintf( 'I wrote to my MP, %s', $mp_name ) );
-		$email_body    = rawurlencode( sprintf( "I just wrote to my MP, %s (%s), about an issue I care about. You can write to yours too: %s", $mp_name, $mp_constituency, home_url( '/' ) ) );
+		$email_subject = rawurlencode( sprintf( 'I wrote to %s', $share_label ) );
+		$email_body_parts = $is_lords
+			? sprintf( "I just wrote to %s about an issue I care about. You can too: %s", $share_label, home_url( '/' ) )
+			: sprintf( "I just wrote to my MP, %s (%s), about an issue I care about. You can write to yours too: %s", $mp_name, $mp_constituency, home_url( '/' ) );
+		$email_body    = rawurlencode( $email_body_parts );
 		$email_url     = 'mailto:?subject=' . $email_subject . '&body=' . $email_body;
 
 		status_header( 200 );

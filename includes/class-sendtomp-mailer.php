@@ -137,10 +137,11 @@ class SendToMP_Mailer {
 			$footer .= 'Note: This message is intended for the attention of ' . $submission->resolved_member['name'] . ".\n\n";
 		}
 
-		$footer .= $this->replace_placeholders(
-			"This message was sent by {constituent_name} ({constituent_postcode}) via {site_name}. The sender verified their email address before this message was sent. Reply directly to {constituent_email}.",
-			$submission
-		);
+		$footer_template = ! empty( $submission->constituent_postcode )
+			? 'This message was sent by {constituent_name} ({constituent_postcode}) via {site_name}. The sender verified their email address before this message was sent. Reply directly to {constituent_email}.'
+			: 'This message was sent by {constituent_name} via {site_name}. The sender verified their email address before this message was sent. Reply directly to {constituent_email}.';
+
+		$footer .= $this->replace_placeholders( $footer_template, $submission );
 
 		if ( sendtomp()->get_setting( 'show_branding' ) ) {
 			$footer .= "\n\nPowered by Bluetorch's SendToMP — verified constituent correspondence. Built by a former parliamentary assistant.";

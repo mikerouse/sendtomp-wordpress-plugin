@@ -68,13 +68,23 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	public function scripts() {
 		return array_merge( parent::scripts(), [
 			[
-				'handle'  => 'sendtomp-peer-search',
-				'src'     => SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
-				'version' => $this->_version,
-				'deps'    => [ 'jquery' ],
-				'enqueue' => [
+				'handle'    => 'sendtomp-peer-search',
+				'src'       => SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
+				'version'   => $this->_version,
+				'deps'      => [ 'jquery' ],
+				'enqueue'   => [
 					[ 'admin_page' => [ 'form_settings' ] ],
 				],
+				'strings'   => [
+					'ajax_url' => admin_url( 'admin-ajax.php' ),
+					'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
+				],
+				'callback' => function() {
+					wp_localize_script( 'sendtomp-peer-search', 'sendtomp_peer_search', [
+						'ajax_url' => admin_url( 'admin-ajax.php' ),
+						'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
+					] );
+				},
 			],
 		] );
 	}
@@ -216,7 +226,7 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 					[
 						'label'    => esc_html__( 'Target Peer', 'sendtomp' ),
 						'type'     => 'text',
-						'name'     => 'target_member_id',
+						'name'     => 'target_member_name',
 						'class'    => 'medium sendtomp-peer-search',
 						'tooltip'  => esc_html__( 'Search for and select a Peer. Required when Target House is Lords.', 'sendtomp' ),
 						'dependency' => [
@@ -232,7 +242,7 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 					[
 						'label' => '',
 						'type'  => 'hidden',
-						'name'  => 'target_member_name',
+						'name'  => 'target_member_id',
 					],
 				],
 			],

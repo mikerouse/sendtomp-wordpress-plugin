@@ -240,10 +240,11 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 		);
 
 		// Target Peer (shown when target_house = 'lords').
+		// Visible field stores the display name; hidden field stores the numeric ID.
 		wpforms_panel_field(
 			'text',
 			'settings',
-			'target_member_id',
+			'target_member_name',
 			$instance->form_data,
 			esc_html__( 'Target Peer', 'sendtomp' ),
 			[
@@ -257,7 +258,7 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 		wpforms_panel_field(
 			'hidden',
 			'settings',
-			'target_member_name',
+			'target_member_id',
 			$instance->form_data,
 			'',
 			[
@@ -311,7 +312,7 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 	}
 
 	/**
-	 * Enqueue builder assets for the SendToMP panel.
+	 * Enqueue builder assets for the SendToMP panel (including peer search).
 	 *
 	 * @return void
 	 */
@@ -323,5 +324,18 @@ class SendToMP_WPForms_Adapter extends SendToMP_Form_Adapter_Abstract {
 			SENDTOMP_VERSION,
 			true
 		);
+
+		wp_enqueue_script(
+			'sendtomp-peer-search',
+			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
+			[ 'jquery' ],
+			SENDTOMP_VERSION,
+			true
+		);
+
+		wp_localize_script( 'sendtomp-peer-search', 'sendtomp_peer_search', [
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
+		] );
 	}
 }

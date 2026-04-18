@@ -53,6 +53,7 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 		add_action( 'wpcf7_before_send_mail', [ $this, 'handle_submission' ], 10, 3 );
 		add_filter( 'wpcf7_editor_panels', [ $this, 'add_editor_panel' ] );
 		add_action( 'wpcf7_save_contact_form', [ $this, 'save_editor_panel' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_editor_assets' ] );
 	}
 
 	/**
@@ -284,7 +285,7 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 						<label for="sendtomp-peer-search"><?php esc_html_e( 'Target Peer', 'sendtomp' ); ?></label>
 					</th>
 					<td>
-						<input type="text" id="sendtomp-peer-search" class="regular-text sendtomp-peer-search"
+						<input type="text" id="sendtomp-peer-search" name="sendtomp-peer-search" class="regular-text sendtomp-peer-search"
 							placeholder="<?php esc_attr_e( 'Search for a Peer...', 'sendtomp' ); ?>"
 							value="<?php echo esc_attr( isset( $settings['target_member_name'] ) ? $settings['target_member_name'] : '' ); ?>" />
 						<input type="hidden" id="sendtomp-target_member_id" name="sendtomp-target_member_id"
@@ -366,5 +367,30 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 		}
 
 		update_post_meta( $form_id, self::META_KEY, $settings );
+	}
+
+	/**
+	 * Enqueue peer search JS on CF7 editor pages.
+	 *
+	 * @param string $hook The admin page hook.
+	 * @return void
+	 */
+	public function enqueue_editor_assets( string $hook ): void {
+		if ( false === strpos( $hook, 'wpcf7' ) ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'sendtomp-peer-search',
+			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
+			[ 'jquery' ],
+			SENDTOMP_VERSION,
+			true
+		);
+
+		wp_localize_script( 'sendtomp-peer-search', 'sendtomp_peer_search', [
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
+		] );
 	}
 }
