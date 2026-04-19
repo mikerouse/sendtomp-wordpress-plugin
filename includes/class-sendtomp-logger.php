@@ -60,8 +60,11 @@ class SendToMP_Logger {
 
 		$member = $submission->resolved_member;
 
+		// Check resolved_member first (set by pipeline/overrides), fall back to metadata.
 		$override_applied = null;
-		if ( isset( $submission->metadata['override_applied'] ) ) {
+		if ( ! empty( $member['override_applied'] ) ) {
+			$override_applied = $member['override_applied'];
+		} elseif ( isset( $submission->metadata['override_applied'] ) ) {
 			$override_applied = $submission->metadata['override_applied'];
 		}
 

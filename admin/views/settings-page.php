@@ -7,6 +7,7 @@ $tabs = array(
 	'email'        => 'Email',
 	'confirmation' => 'Confirmation',
 	'rate-limits'  => 'Rate Limits',
+	'overrides'    => 'Address Overrides',
 	'webhook'      => 'Webhook API',
 	'license'      => 'License',
 	'log'          => 'Log',
@@ -52,7 +53,9 @@ $tabs = array(
 				</div>
 			<?php endif; ?>
 
-			<?php if ($current_tab === 'log') : ?>
+			<?php if ($current_tab === 'overrides') : ?>
+				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/overrides-page.php'; ?>
+			<?php elseif ($current_tab === 'log') : ?>
 				<form method="post" action="options.php">
 					<?php
 					settings_fields('sendtomp_settings_group');
