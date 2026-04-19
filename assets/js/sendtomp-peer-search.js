@@ -76,7 +76,7 @@ jQuery( function( $ ) {
 						action: 'sendtomp_search_members',
 						nonce: config.nonce,
 						query: query,
-						house: 'lords'
+						house: $input.data( 'house' ) || 'lords'
 					},
 					success: function( response ) {
 						$results.empty();
@@ -115,6 +115,7 @@ jQuery( function( $ ) {
 							}
 
 							var $item = $( '<div>' )
+								.addClass( 'sendtomp-peer-result-item' )
 								.css( { padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f0f0f1' } )
 								.html( '<strong>' + $( '<span>' ).text( member.name ).html() + '</strong>'
 									+ ' <span style="color:#646970;">(' + $( '<span>' ).text( member.party || '' ).html() + ')</span>'

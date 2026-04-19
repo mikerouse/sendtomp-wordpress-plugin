@@ -692,8 +692,9 @@ class SendToMP_Settings {
 			wp_send_json_success( [ 'results' => [] ] );
 		}
 
-		$api_client = new SendToMP_API_Client();
-		$results    = $api_client->search_members( $query, $house, $party );
+		$api_client  = new SendToMP_API_Client();
+		$search_house = ( 'all' === $house ) ? '' : $house;
+		$results     = $api_client->search_members( $query, $search_house, $party );
 
 		if ( is_wp_error( $results ) ) {
 			wp_send_json_error( [ 'message' => $results->get_error_message() ] );
@@ -712,6 +713,10 @@ class SendToMP_Settings {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		if ( ! sendtomp()->can( 'local_overrides' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Local overrides are not available on your current plan.', 'sendtomp' ) ] );
 		}
 
 		$member_id   = isset( $_POST['member_id'] ) ? absint( $_POST['member_id'] ) : 0;
@@ -757,6 +762,10 @@ class SendToMP_Settings {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		if ( ! sendtomp()->can( 'local_overrides' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Local overrides are not available on your current plan.', 'sendtomp' ) ] );
 		}
 
 		$member_id = isset( $_POST['member_id'] ) ? absint( $_POST['member_id'] ) : 0;

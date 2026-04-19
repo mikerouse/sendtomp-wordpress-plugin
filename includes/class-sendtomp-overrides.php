@@ -64,6 +64,12 @@ class SendToMP_Overrides {
 			'updated_at'  => gmdate( 'Y-m-d H:i:s' ),
 		];
 
+		// Use add_option on first save to set autoload=false (avoids loading
+		// potentially large override sets on every request).
+		if ( false === get_option( self::OPTION_KEY ) ) {
+			return add_option( self::OPTION_KEY, $overrides, '', false );
+		}
+
 		return update_option( self::OPTION_KEY, $overrides );
 	}
 
@@ -102,6 +108,12 @@ class SendToMP_Overrides {
 			return $resolved_member;
 		}
 
+		// Normalise override_applied from boolean to string regardless of tier.
+		// This ensures consistent logging even when local_overrides is disabled.
+		if ( ! empty( $resolved_member['override_applied'] ) && true === $resolved_member['override_applied'] ) {
+			$resolved_member['override_applied'] = 'global';
+		}
+
 		if ( ! sendtomp()->can( 'local_overrides' ) ) {
 			return $resolved_member;
 		}
@@ -109,11 +121,6 @@ class SendToMP_Overrides {
 		$override = self::get( $member_id );
 
 		if ( ! $override || empty( $override['email'] ) ) {
-			// No local override — keep whatever the middleware returned.
-			// Normalise override_applied from boolean/string to a consistent string.
-			if ( ! empty( $resolved_member['override_applied'] ) && true === $resolved_member['override_applied'] ) {
-				$resolved_member['override_applied'] = 'global';
-			}
 			return $resolved_member;
 		}
 

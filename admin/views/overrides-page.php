@@ -37,6 +37,7 @@ SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 				</th>
 				<td>
 					<input type="text" id="sendtomp-override-member-search" class="regular-text sendtomp-peer-search"
+						data-house="all"
 						placeholder="<?php esc_attr_e( 'Search for an MP or Peer...', 'sendtomp' ); ?>" />
 					<input type="hidden" id="sendtomp-override-member-id" name="sendtomp-override-member-id" value="" />
 					<input type="hidden" id="sendtomp-override-member-house" value="" />
@@ -115,9 +116,8 @@ SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 jQuery(function($) {
 	'use strict';
 
-	// Extend peer search to also capture house for override form.
-	var originalInit = true;
-	$(document).on('click', '.sendtomp-peer-results div[style]', function() {
+	// Capture the selected member's house from the peer search result.
+	$(document).on('click', '.sendtomp-peer-result-item', function() {
 		var member = $(this).data('member');
 		if (member && $('#sendtomp-override-member-id').length) {
 			$('#sendtomp-override-member-house').val(member.house || 'commons');
