@@ -25,6 +25,10 @@ class SendToMP_Settings {
 		add_action( 'wp_ajax_sendtomp_search_members', [ $this, 'handle_search_members' ] );
 		add_action( 'wp_ajax_sendtomp_activate_license', [ $this, 'handle_activate_license' ] );
 		add_action( 'wp_ajax_sendtomp_deactivate_license', [ $this, 'handle_deactivate_license' ] );
+		add_action( 'wp_ajax_sendtomp_export_logs_csv', [ $this, 'handle_export_logs_csv' ] );
+		add_action( 'wp_ajax_sendtomp_lookup_postcode', [ $this, 'handle_lookup_postcode' ] );
+		add_action( 'wp_ajax_nopriv_sendtomp_lookup_postcode', [ $this, 'handle_lookup_postcode' ] );
+		add_action( 'wp_ajax_sendtomp_erase_data', [ $this, 'handle_erase_data' ] );
 		add_action( 'wp_ajax_sendtomp_save_override', [ $this, 'handle_save_override' ] );
 		add_action( 'wp_ajax_sendtomp_delete_override', [ $this, 'handle_delete_override' ] );
 	}
@@ -551,6 +555,32 @@ class SendToMP_Settings {
 			'sendtomp',
 			$section
 		);
+
+		add_settings_field(
+			'erase_data',
+			__( 'GDPR Data Erasure', 'sendtomp' ),
+			[ $this, 'render_erase_data_field' ],
+			'sendtomp',
+			$section
+		);
+
+		add_settings_field(
+			'privacy_notice',
+			__( 'Privacy Notice Template', 'sendtomp' ),
+			[ $this, 'render_privacy_notice_template' ],
+			'sendtomp',
+			$section
+		);
+
+		if ( sendtomp()->can( 'csv_export' ) ) {
+			add_settings_field(
+				'export_logs',
+				__( 'Export Logs', 'sendtomp' ),
+				[ $this, 'render_export_button' ],
+				'sendtomp',
+				$section
+			);
+		}
 	}
 
 	/**
@@ -881,6 +911,121 @@ class SendToMP_Settings {
 	}
 
 	/**
+	 * AJAX handler — export submission logs as CSV (Pro tier only).
+	 *
+	 * @return void
+	 */
+	public function handle_export_logs_csv(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( __( 'Permission denied.', 'sendtomp' ) );
+		}
+
+		if ( ! sendtomp()->can( 'csv_export' ) ) {
+			wp_die( __( 'CSV export requires a Pro plan.', 'sendtomp' ) );
+		}
+
+		$logs = SendToMP_Logger::get_logs( [
+			'per_page' => 10000,
+			'page'     => 1,
+		] );
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=sendtomp-logs-' . gmdate( 'Y-m-d' ) . '.csv' );
+
+		$output = fopen( 'php://output', 'w' );
+
+		fputcsv( $output, [
+			'Date', 'Name', 'Email', 'Postcode', 'Subject', 'MP', 'House',
+			'Status', 'Override', 'Contact Quality', 'Adapter', 'Error',
+		] );
+
+		foreach ( $logs['items'] as $log ) {
+			fputcsv( $output, [
+				$log->created_at,
+				$log->constituent_name,
+				$log->constituent_email,
+				$log->constituent_postcode,
+				$log->message_subject,
+				$log->target_member_name,
+				$log->house,
+				$log->delivery_status,
+				$log->override_applied ?? '',
+				$log->contact_quality ?? '',
+				$log->source_adapter,
+				$log->error_message ?? '',
+			] );
+		}
+
+		fclose( $output );
+		exit;
+	}
+
+	/**
+	 * AJAX handler — frontend postcode lookup (returns MP info).
+	 *
+	 * Available to both logged-in and logged-out users for frontend forms.
+	 *
+	 * @return void
+	 */
+	public function handle_lookup_postcode(): void {
+		check_ajax_referer( 'sendtomp_postcode_lookup', 'nonce' );
+
+		$postcode = isset( $_POST['postcode'] ) ? sanitize_text_field( wp_unslash( $_POST['postcode'] ) ) : '';
+
+		if ( empty( $postcode ) || strlen( $postcode ) < 5 ) {
+			wp_send_json_error( [ 'message' => __( 'Please enter a valid UK postcode.', 'sendtomp' ) ] );
+		}
+
+		$api_client  = new SendToMP_API_Client();
+		$api_result  = $api_client->resolve_member( $postcode, 'commons' );
+
+		if ( is_wp_error( $api_result ) ) {
+			wp_send_json_error( [ 'message' => $api_result->get_error_message() ] );
+		}
+
+		$member = isset( $api_result['member'] ) ? $api_result['member'] : [];
+
+		wp_send_json_success( [
+			'name'         => isset( $member['name'] ) ? $member['name'] : '',
+			'party'        => isset( $member['party'] ) ? $member['party'] : '',
+			'constituency' => isset( $member['constituency'] ) ? $member['constituency'] : '',
+		] );
+	}
+
+	/**
+	 * AJAX handler — erase all data for a given email (GDPR).
+	 *
+	 * @return void
+	 */
+	public function handle_erase_data(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+
+		if ( ! is_email( $email ) ) {
+			wp_send_json_error( [ 'message' => __( 'A valid email address is required.', 'sendtomp' ) ] );
+		}
+
+		$logs_deleted   = SendToMP_Logger::purge_by_email( $email );
+		$pending_deleted = SendToMP_Confirmation::purge_by_email( $email );
+
+		wp_send_json_success( [
+			'message' => sprintf(
+				/* translators: 1: logs deleted, 2: pending deleted */
+				__( 'Erased %1$d log entries and %2$d pending submissions for that email address.', 'sendtomp' ),
+				$logs_deleted,
+				$pending_deleted
+			),
+		] );
+	}
+
+	/**
 	 * Render a text input field.
 	 *
 	 * @param array $args Field arguments.
@@ -1078,6 +1223,66 @@ class SendToMP_Settings {
 		echo '</button>';
 		echo '<span id="sendtomp-purge-result" style="margin-left: 10px;"></span>';
 		echo '<p class="description">' . esc_html__( 'Immediately delete logs older than the retention period above.', 'sendtomp' ) . '</p>';
+	}
+
+	/**
+	 * Render the GDPR data erasure field.
+	 *
+	 * @param array $args Field arguments.
+	 * @return void
+	 */
+	public function render_erase_data_field( array $args = [] ): void {
+		echo '<div style="display: flex; gap: 8px; align-items: center;">';
+		echo '<input type="email" id="sendtomp-erase-email" class="regular-text" placeholder="' . esc_attr__( 'constituent@example.com', 'sendtomp' ) . '" />';
+		echo '<button type="button" id="sendtomp-erase-data" class="button button-secondary">';
+		echo esc_html__( 'Erase Data', 'sendtomp' );
+		echo '</button>';
+		echo '</div>';
+		echo '<span id="sendtomp-erase-result" style="display: block; margin-top: 6px;"></span>';
+		echo '<p class="description">' . esc_html__( 'Delete all submission logs and pending submissions for a given email address. This action cannot be undone.', 'sendtomp' ) . '</p>';
+	}
+
+	/**
+	 * Render the privacy notice template for site owners.
+	 *
+	 * @param array $args Field arguments.
+	 * @return void
+	 */
+	public function render_privacy_notice_template( array $args = [] ): void {
+		$template = <<<'TEXT'
+This website uses the SendToMP plugin to allow you to send messages to your Member of Parliament. When you submit a message:
+
+- Your name, email address, postcode, and message are processed on this website.
+- Your postcode is used to identify your MP via the UK Parliament API. No other personal data is sent to external services.
+- You will receive a confirmation email before your message is sent. Your data is not shared with your MP until you explicitly confirm.
+- If you do not confirm within 24 hours, your data is automatically deleted.
+- Submission logs are retained for the period specified in our settings (default: 90 days) and then automatically deleted.
+- You may request erasure of your data at any time by contacting us.
+TEXT;
+
+		echo '<details>';
+		echo '<summary style="cursor: pointer; font-weight: 600;">' . esc_html__( 'Suggested privacy policy paragraph (click to expand)', 'sendtomp' ) . '</summary>';
+		echo '<textarea readonly class="large-text" rows="10" style="margin-top: 8px; background: #f6f7f7; font-size: 0.9em;">' . esc_textarea( $template ) . '</textarea>';
+		echo '<p class="description">' . esc_html__( 'Copy this text and add it to your site\'s privacy policy page.', 'sendtomp' ) . '</p>';
+		echo '</details>';
+	}
+
+	/**
+	 * Render the CSV export button (Pro tier only).
+	 *
+	 * @param array $args Field arguments.
+	 * @return void
+	 */
+	public function render_export_button( array $args = [] ): void {
+		$export_url = add_query_arg( [
+			'action' => 'sendtomp_export_logs_csv',
+			'nonce'  => wp_create_nonce( 'sendtomp_admin' ),
+		], admin_url( 'admin-ajax.php' ) );
+
+		echo '<a href="' . esc_url( $export_url ) . '" class="button button-secondary">';
+		echo esc_html__( 'Export to CSV', 'sendtomp' );
+		echo '</a>';
+		echo '<p class="description">' . esc_html__( 'Download all submission logs as a CSV file.', 'sendtomp' ) . '</p>';
 	}
 
 	/**

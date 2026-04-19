@@ -140,5 +140,33 @@ class SendToMP_Admin {
 			echo esc_html__( 'The middleware API URL is not configured. Please set it in the General settings tab to enable MP lookups.', 'sendtomp' );
 			echo '</p></div>';
 		}
+
+		// License status notices.
+		$license_key = sendtomp()->get_setting( 'license_key' );
+		$license_status = SendToMP_License::get_cached_status();
+
+		if ( ! empty( $license_key ) && $license_status && ! empty( $license_status['status'] ) && 'expired' === $license_status['status'] ) {
+			echo '<div class="notice notice-error is-dismissible">';
+			echo '<p><strong>' . esc_html__( 'SendToMP:', 'sendtomp' ) . '</strong> ';
+			echo esc_html__( 'Your license has expired. Please renew to continue receiving updates and using premium features.', 'sendtomp' );
+			echo ' <a href="https://bluetorch.co.uk/sendtomp/portal">' . esc_html__( 'Renew now', 'sendtomp' ) . ' &rarr;</a>';
+			echo '</p></div>';
+		}
+
+		// Free tier remaining messages warning.
+		if ( SendToMP_License::TIER_FREE === SendToMP_License::get_tier() ) {
+			$remaining = SendToMP_License::get_remaining();
+			if ( $remaining <= 5 && $remaining > 0 ) {
+				echo '<div class="notice notice-warning is-dismissible">';
+				echo '<p><strong>' . esc_html__( 'SendToMP:', 'sendtomp' ) . '</strong> ';
+				echo esc_html( sprintf(
+					/* translators: %d: remaining messages */
+					__( 'You have %d messages remaining this month on the Free plan.', 'sendtomp' ),
+					$remaining
+				) );
+				echo ' <a href="https://bluetorch.co.uk/sendtomp#pricing">' . esc_html__( 'Upgrade to Plus', 'sendtomp' ) . ' &rarr;</a>';
+				echo '</p></div>';
+			}
+		}
 	}
 }
