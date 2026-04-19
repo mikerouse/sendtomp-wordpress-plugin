@@ -91,7 +91,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/sendtomp-${VERSION}.zip"
 
-          curl -s -X POST "${API_URL}/api/releases/register" \
+          curl -sL -X POST "${API_URL}/api/releases/register" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${API_KEY}" \
             -d "{
