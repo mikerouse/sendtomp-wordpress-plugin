@@ -926,11 +926,6 @@ class SendToMP_Settings {
 			wp_die( __( 'CSV export requires a Pro plan.', 'sendtomp' ) );
 		}
 
-		$logs = SendToMP_Logger::get_logs( [
-			'per_page' => 10000,
-			'page'     => 1,
-		] );
-
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename=sendtomp-logs-' . gmdate( 'Y-m-d' ) . '.csv' );
 
@@ -941,22 +936,33 @@ class SendToMP_Settings {
 			'Status', 'Override', 'Contact Quality', 'Adapter', 'Error',
 		] );
 
-		foreach ( $logs['items'] as $log ) {
-			fputcsv( $output, [
-				$log->created_at,
-				$log->constituent_name,
-				$log->constituent_email,
-				$log->constituent_postcode,
-				$log->message_subject,
-				$log->target_member_name,
-				$log->house,
-				$log->delivery_status,
-				$log->override_applied ?? '',
-				$log->contact_quality ?? '',
-				$log->source_adapter,
-				$log->error_message ?? '',
+		// Stream all pages to avoid memory issues on large datasets.
+		$page = 1;
+		do {
+			$logs = SendToMP_Logger::get_logs( [
+				'per_page' => 1000,
+				'page'     => $page,
 			] );
-		}
+
+			foreach ( $logs['items'] as $log ) {
+				fputcsv( $output, array_map( [ $this, 'csv_safe' ], [
+					$log->created_at,
+					$log->constituent_name,
+					$log->constituent_email,
+					$log->constituent_postcode,
+					$log->message_subject,
+					$log->target_member_name,
+					$log->house,
+					$log->delivery_status,
+					$log->override_applied ?? '',
+					$log->contact_quality ?? '',
+					$log->source_adapter,
+					$log->error_message ?? '',
+				] ) );
+			}
+
+			$page++;
+		} while ( count( $logs['items'] ) >= 1000 );
 
 		fclose( $output );
 		exit;
@@ -978,6 +984,30 @@ class SendToMP_Settings {
 			wp_send_json_error( [ 'message' => __( 'Please enter a valid UK postcode.', 'sendtomp' ) ] );
 		}
 
+		$api_url = sendtomp()->get_setting( 'api_url' );
+		if ( empty( $api_url ) ) {
+			wp_send_json_error( [ 'message' => __( 'MP lookup is not configured.', 'sendtomp' ) ] );
+		}
+
+		// Rate limit postcode lookups by IP (30 per minute).
+		$ip            = SendToMP_Pipeline::get_client_ip();
+		$throttle_key  = 'sendtomp_lookup_' . md5( $ip );
+		$lookup_count  = (int) get_transient( $throttle_key );
+
+		if ( $lookup_count >= 30 ) {
+			wp_send_json_error( [ 'message' => __( 'Too many lookups. Please try again shortly.', 'sendtomp' ) ] );
+		}
+
+		set_transient( $throttle_key, $lookup_count + 1, MINUTE_IN_SECONDS );
+
+		// Cache lookups by postcode (1 hour TTL).
+		$cache_key = 'sendtomp_mp_' . md5( strtoupper( str_replace( ' ', '', $postcode ) ) );
+		$cached    = get_transient( $cache_key );
+
+		if ( false !== $cached ) {
+			wp_send_json_success( $cached );
+		}
+
 		$api_client  = new SendToMP_API_Client();
 		$api_result  = $api_client->resolve_member( $postcode, 'commons' );
 
@@ -987,11 +1017,28 @@ class SendToMP_Settings {
 
 		$member = isset( $api_result['member'] ) ? $api_result['member'] : [];
 
-		wp_send_json_success( [
+		$result = [
 			'name'         => isset( $member['name'] ) ? $member['name'] : '',
 			'party'        => isset( $member['party'] ) ? $member['party'] : '',
 			'constituency' => isset( $member['constituency'] ) ? $member['constituency'] : '',
-		] );
+		];
+
+		set_transient( $cache_key, $result, HOUR_IN_SECONDS );
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * Sanitize a CSV cell value to prevent formula injection.
+	 *
+	 * @param string $value Raw cell value.
+	 * @return string Sanitized value.
+	 */
+	private function csv_safe( string $value ): string {
+		if ( isset( $value[0] ) && in_array( $value[0], [ '=', '+', '-', '@' ], true ) ) {
+			return "'" . $value;
+		}
+		return $value;
 	}
 
 	/**
@@ -1249,6 +1296,8 @@ class SendToMP_Settings {
 	 * @return void
 	 */
 	public function render_privacy_notice_template( array $args = [] ): void {
+		// Intentionally English-only: this is a legal template for UK parliamentary
+		// correspondence. Site owners should translate/adapt for their privacy policy.
 		$template = <<<'TEXT'
 This website uses the SendToMP plugin to allow you to send messages to your Member of Parliament. When you submit a message:
 

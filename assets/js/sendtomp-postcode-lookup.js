@@ -8,8 +8,6 @@
 jQuery( function( $ ) {
 	'use strict';
 
-	var debounceTimer;
-
 	function initPostcodeLookup( $input ) {
 		var $preview = $( '<div class="sendtomp-mp-preview" style="display:none; margin-top:6px; padding:8px 12px; background:#f0f6fc; border:1px solid #72aee6; border-radius:4px; font-size:0.9em;"></div>' );
 		$input.after( $preview );
@@ -17,14 +15,14 @@ jQuery( function( $ ) {
 		$input.on( 'input blur', function() {
 			var postcode = $.trim( $input.val() );
 
-			clearTimeout( debounceTimer );
+			clearTimeout( $input.data( 'debounceTimer' ) );
 
 			if ( postcode.length < 5 ) {
 				$preview.hide().empty();
 				return;
 			}
 
-			debounceTimer = setTimeout( function() {
+			$input.data( 'debounceTimer', setTimeout( function() {
 				$.ajax( {
 					url: sendtomp_frontend.ajax_url,
 					type: 'POST',
@@ -49,7 +47,7 @@ jQuery( function( $ ) {
 						$preview.hide().empty();
 					}
 				} );
-			}, 500 );
+			}, 500 ) );
 		} );
 	}
 

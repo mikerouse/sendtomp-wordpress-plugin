@@ -149,7 +149,7 @@ class SendToMP_Admin {
 			echo '<div class="notice notice-error is-dismissible">';
 			echo '<p><strong>' . esc_html__( 'SendToMP:', 'sendtomp' ) . '</strong> ';
 			echo esc_html__( 'Your license has expired. Please renew to continue receiving updates and using premium features.', 'sendtomp' );
-			echo ' <a href="https://bluetorch.co.uk/sendtomp/portal">' . esc_html__( 'Renew now', 'sendtomp' ) . ' &rarr;</a>';
+			echo ' <a href="' . esc_url( 'https://bluetorch.co.uk/sendtomp/portal' ) . '">' . esc_html__( 'Renew now', 'sendtomp' ) . ' &rarr;</a>';
 			echo '</p></div>';
 		}
 
@@ -164,7 +164,7 @@ class SendToMP_Admin {
 					__( 'You have %d messages remaining this month on the Free plan.', 'sendtomp' ),
 					$remaining
 				) );
-				echo ' <a href="https://bluetorch.co.uk/sendtomp#pricing">' . esc_html__( 'Upgrade to Plus', 'sendtomp' ) . ' &rarr;</a>';
+				echo ' <a href="' . esc_url( 'https://bluetorch.co.uk/sendtomp#pricing' ) . '">' . esc_html__( 'Upgrade to Plus', 'sendtomp' ) . ' &rarr;</a>';
 				echo '</p></div>';
 			}
 		}
