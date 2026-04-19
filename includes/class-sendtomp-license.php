@@ -69,6 +69,34 @@ class SendToMP_License {
 	}
 
 	/**
+	 * Determine whether branding should be displayed.
+	 *
+	 * Free: always on (setting ignored).
+	 * Plus: respects show_branding setting (default on).
+	 * Pro: respects show_branding setting (default off / white-label).
+	 *
+	 * @return bool
+	 */
+	public static function should_show_branding(): bool {
+		$tier = self::get_tier();
+
+		if ( self::TIER_FREE === $tier ) {
+			return true;
+		}
+
+		// Check whether the user has explicitly saved a branding preference.
+		// If not, apply tier-specific defaults: Plus = on, Pro = off.
+		$saved = get_option( 'sendtomp_settings', [] );
+
+		if ( is_array( $saved ) && array_key_exists( 'show_branding', $saved ) ) {
+			return (bool) $saved['show_branding'];
+		}
+
+		// No explicit save — use tier default.
+		return self::TIER_PRO !== $tier;
+	}
+
+	/**
 	 * Get the current license tier.
 	 *
 	 * @return string 'free', 'plus', or 'pro'.

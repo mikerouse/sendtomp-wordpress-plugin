@@ -407,7 +407,7 @@ class SendToMP_Confirmation {
 		$form_action = esc_url( add_query_arg( [ 'sendtomp_confirm' => $token ], home_url( '/' ) ) );
 		$nonce_action = 'sendtomp_confirm_' . $token;
 
-		$show_branding = sendtomp()->get_setting( 'show_branding' );
+		$show_branding = SendToMP_License::should_show_branding();
 
 		status_header( 200 );
 		nocache_headers();
@@ -581,7 +581,7 @@ class SendToMP_Confirmation {
 		$site_name       = esc_html( get_bloginfo( 'name' ) );
 		$site_url        = esc_url( home_url( '/' ) );
 
-		$show_branding = sendtomp()->get_setting( 'show_branding' );
+		$show_branding = SendToMP_License::should_show_branding();
 
 		// Social sharing URLs.
 		$is_lords     = isset( $resolved_member['house'] ) && 'lords' === $resolved_member['house'];

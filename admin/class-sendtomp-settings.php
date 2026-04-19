@@ -154,15 +154,62 @@ class SendToMP_Settings {
 		add_settings_field(
 			'show_branding',
 			__( 'Show Branding', 'sendtomp' ),
-			[ $this, 'render_checkbox_field' ],
+			[ $this, 'render_branding_field' ],
 			'sendtomp',
-			$section,
-			[
-				'key'         => 'show_branding',
-				'label'       => __( 'Show "Powered by Bluetorch\'s SendToMP" on emails and confirmation pages', 'sendtomp' ),
-				'description' => __( 'Controls whether branding appears on MP emails, confirmation emails, and the confirmation page.', 'sendtomp' ),
-			]
+			$section
 		);
+
+		add_settings_field(
+			'directory_optin',
+			__( 'Campaign Directory', 'sendtomp' ),
+			[ $this, 'render_directory_optin_field' ],
+			'sendtomp',
+			$section
+		);
+	}
+
+	/**
+	 * Render the branding field with tier-appropriate messaging.
+	 *
+	 * @return void
+	 */
+	public function render_branding_field( array $args = [] ): void {
+		$tier = SendToMP_License::get_tier();
+
+		if ( SendToMP_License::TIER_FREE === $tier ) {
+			echo '<p class="description">';
+			echo esc_html__( 'Branding is included on the Free plan. Upgrade to Plus to make it configurable, or Pro for white-label.', 'sendtomp' );
+			echo '</p>';
+			return;
+		}
+
+		$this->render_checkbox_field( [
+			'key'         => 'show_branding',
+			'label'       => __( 'Show "Powered by Bluetorch\'s SendToMP" on emails and confirmation pages', 'sendtomp' ),
+			'description' => SendToMP_License::TIER_PRO === $tier
+				? __( 'Pro plan: branding is off by default. Enable if you want to show it.', 'sendtomp' )
+				: __( 'Plus plan: branding is on by default. Uncheck to remove.', 'sendtomp' ),
+		] );
+	}
+
+	/**
+	 * Render the campaign directory opt-in field.
+	 *
+	 * @return void
+	 */
+	public function render_directory_optin_field( array $args = [] ): void {
+		if ( ! sendtomp()->can( 'lords' ) ) {
+			echo '<p class="description">';
+			echo esc_html__( 'Campaign directory listing is available on Plus and Pro plans.', 'sendtomp' );
+			echo '</p>';
+			return;
+		}
+
+		$this->render_checkbox_field( [
+			'key'         => 'directory_optin',
+			'label'       => __( 'List this campaign in the Bluetorch Campaign Directory', 'sendtomp' ),
+			'description' => __( 'Your campaign title and URL will appear in the public directory. No personal data is shared.', 'sendtomp' ),
+		] );
 	}
 
 	/**
