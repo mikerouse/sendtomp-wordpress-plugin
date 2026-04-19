@@ -91,7 +91,7 @@ class SendToMP_Settings {
 			$section,
 			__( 'General Settings', 'sendtomp' ),
 			function () {
-				echo '<p>' . esc_html__( 'Configure the core settings for SendToMP.', 'sendtomp' ) . '</p>';
+				echo '<p>' . esc_html__( 'These settings connect SendToMP to the Bluetorch API (which resolves postcodes to MPs) and set defaults for your campaigns.', 'sendtomp' ) . '</p>';
 			},
 			'sendtomp'
 		);
@@ -105,7 +105,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'api_url',
 				'type'        => 'url',
-				'description' => __( 'The URL for the SendToMP middleware API.', 'sendtomp' ),
+				'description' => __( 'The Bluetorch API endpoint that resolves postcodes to MPs and handles licence validation. You received this when you signed up — find it at bluetorch.co.uk/sendtomp/portal. Free users: use the public endpoint shown in your welcome email.', 'sendtomp' ),
 			]
 		);
 
@@ -118,7 +118,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'api_key',
 				'type'        => 'password',
-				'description' => __( 'Your API key for authenticating with the middleware.', 'sendtomp' ),
+				'description' => __( 'Authenticates your site with the Bluetorch API. Find your key at bluetorch.co.uk/sendtomp/portal alongside your API URL.', 'sendtomp' ),
 			]
 		);
 
@@ -134,7 +134,7 @@ class SendToMP_Settings {
 					'commons' => __( 'House of Commons', 'sendtomp' ),
 					'lords'   => __( 'House of Lords', 'sendtomp' ),
 				],
-				'description' => __( 'The default parliamentary house to target.', 'sendtomp' ),
+				'description' => __( 'The default target for new forms and feeds. Most campaigns target the House of Commons (MPs elected by constituency). You can override this per form — this just sets the starting default.', 'sendtomp' ),
 			]
 		);
 
@@ -147,12 +147,12 @@ class SendToMP_Settings {
 			[
 				'key'         => 'campaign_type',
 				'options'     => [
-					'general'     => __( 'General', 'sendtomp' ),
-					'advocacy'    => __( 'Advocacy', 'sendtomp' ),
-					'petition'    => __( 'Petition', 'sendtomp' ),
-					'consultation' => __( 'Consultation', 'sendtomp' ),
+					'general'      => __( 'General — open-ended correspondence', 'sendtomp' ),
+					'advocacy'     => __( 'Advocacy — urging action on an issue', 'sendtomp' ),
+					'petition'     => __( 'Petition — supporting a specific ask', 'sendtomp' ),
+					'consultation' => __( 'Consultation — sharing views on legislation', 'sendtomp' ),
 				],
-				'description' => __( 'The type of campaign this site is running.', 'sendtomp' ),
+				'description' => __( 'Determines the default email template used when your constituents write to their MP. Each type provides a professionally framed opening and closing around the constituent\'s own message. You can always customise the template further on the Email tab.', 'sendtomp' ),
 			]
 		);
 
@@ -183,17 +183,17 @@ class SendToMP_Settings {
 
 		if ( SendToMP_License::TIER_FREE === $tier ) {
 			echo '<p class="description">';
-			echo esc_html__( 'Branding is included on the Free plan. Upgrade to Plus to make it configurable, or Pro for white-label.', 'sendtomp' );
+			echo esc_html__( 'A small "Powered by Bluetorch\'s SendToMP" line appears in the footer of emails to MPs, confirmation emails, and the confirmation/thank-you pages. On the Free plan this is always shown. Upgrade to Plus to toggle it, or Pro for white-label (off by default).', 'sendtomp' );
 			echo '</p>';
 			return;
 		}
 
 		$this->render_checkbox_field( [
 			'key'         => 'show_branding',
-			'label'       => __( 'Show "Powered by Bluetorch\'s SendToMP" on emails and confirmation pages', 'sendtomp' ),
+			'label'       => __( 'Show "Powered by Bluetorch\'s SendToMP" in email footers and confirmation pages', 'sendtomp' ),
 			'description' => SendToMP_License::TIER_PRO === $tier
-				? __( 'Pro plan: branding is off by default. Enable if you want to show it.', 'sendtomp' )
-				: __( 'Plus plan: branding is on by default. Uncheck to remove.', 'sendtomp' ),
+				? __( 'Pro plan: branding is off by default (white-label). Enable this if you want to show "Powered by Bluetorch\'s SendToMP" — it links to bluetorch.co.uk/sendtomp and appears as a small footer line.', 'sendtomp' )
+				: __( 'Plus plan: when checked, a "Powered by Bluetorch\'s SendToMP" line appears in the footer of MP emails, confirmation emails, and the confirmation page. Uncheck to remove it.', 'sendtomp' ),
 		] );
 	}
 
@@ -205,7 +205,7 @@ class SendToMP_Settings {
 	public function render_directory_optin_field( array $args = [] ): void {
 		if ( ! sendtomp()->can( 'lords' ) ) {
 			echo '<p class="description">';
-			echo esc_html__( 'Campaign directory listing is available on Plus and Pro plans.', 'sendtomp' );
+			echo esc_html__( 'The Bluetorch Campaign Directory is a public listing of active campaigns using SendToMP, helping constituents discover causes they can support. Available on Plus and Pro plans.', 'sendtomp' );
 			echo '</p>';
 			return;
 		}
@@ -213,7 +213,7 @@ class SendToMP_Settings {
 		$this->render_checkbox_field( [
 			'key'         => 'directory_optin',
 			'label'       => __( 'List this campaign in the Bluetorch Campaign Directory', 'sendtomp' ),
-			'description' => __( 'Your campaign title and URL will appear in the public directory. No personal data is shared.', 'sendtomp' ),
+			'description' => __( 'When enabled, your site name and campaign URL will appear in the public directory at bluetorch.co.uk/campaigns. This helps constituents discover your campaign. No personal data or message content is shared — only your site name and URL.', 'sendtomp' ),
 		] );
 	}
 
@@ -229,7 +229,7 @@ class SendToMP_Settings {
 			$section,
 			__( 'Email Settings', 'sendtomp' ),
 			function () {
-				echo '<p>' . esc_html__( 'Configure how emails are sent to MPs.', 'sendtomp' ) . '</p>';
+				echo '<p>' . esc_html__( 'These settings control how emails appear when they arrive in an MP\'s inbox. Getting these right is critical for deliverability and response rates.', 'sendtomp' ) . '</p>';
 			},
 			'sendtomp'
 		);
@@ -243,7 +243,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'from_email',
 				'type'        => 'email',
-				'description' => __( 'The email address that MP emails are sent from.', 'sendtomp' ),
+				'description' => __( 'The email address MPs will see as the sender. Use your main site/organisation email — not a subdomain or throwaway address. MP offices group and categorise incoming email by sender domain, so using a consistent, recognisable address helps your messages get read and acted upon. This also needs to match the domain configured in your SMTP service for SPF/DKIM authentication.', 'sendtomp' ),
 			]
 		);
 
@@ -256,7 +256,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'from_name',
 				'type'        => 'text',
-				'description' => __( 'The sender name for MP emails.', 'sendtomp' ),
+				'description' => __( 'The name shown alongside the From Email in the MP\'s inbox. Use your organisation or campaign name — this is the first thing caseworkers see.', 'sendtomp' ),
 			]
 		);
 
@@ -269,10 +269,10 @@ class SendToMP_Settings {
 			[
 				'key'         => 'reply_to',
 				'options'     => [
-					'constituent' => __( 'Constituent email address', 'sendtomp' ),
-					'fixed'       => __( 'Fixed address (From Email)', 'sendtomp' ),
+					'constituent' => __( 'Constituent\'s email address (recommended)', 'sendtomp' ),
+					'fixed'       => __( 'Fixed address', 'sendtomp' ),
 				],
-				'description' => __( 'Who the MP can reply to.', 'sendtomp' ),
+				'description' => __( 'When set to "Constituent\'s email", the MP can reply directly to the person who wrote. This is the recommended setting — it enables genuine two-way correspondence. Use "Fixed address" only if you need all replies to go to a central inbox.', 'sendtomp' ),
 			]
 		);
 
@@ -285,7 +285,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'reply_to_email',
 				'type'        => 'email',
-				'description' => __( 'When Reply-To is set to "Fixed address", replies go to this email. Leave blank to use the From Email.', 'sendtomp' ),
+				'description' => __( 'Only used when Reply-To is set to "Fixed address". All MP replies will go to this address instead of the constituent. Leave blank to use the From Email.', 'sendtomp' ),
 			]
 		);
 
@@ -298,7 +298,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'bcc_emails',
 				'type'        => 'text',
-				'description' => __( 'Comma-separated list of email addresses to BCC on every message.', 'sendtomp' ),
+				'description' => __( 'Receive a blind copy of every message sent to an MP. Useful for campaign monitoring and record-keeping. Comma-separate multiple addresses. The MP and constituent will not see these addresses.', 'sendtomp' ),
 			]
 		);
 
@@ -311,7 +311,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'subject_template',
 				'type'        => 'text',
-				'description' => __( 'Email subject template. Use placeholders: {constituent_name}, {mp_name}, {mp_constituency}.', 'sendtomp' ),
+				'description' => __( 'The subject line of emails sent to MPs. Placeholders: {constituent_name}, {mp_name}, {mp_constituency}, {mp_party}. A good subject helps caseworkers prioritise and categorise your messages.', 'sendtomp' ),
 			]
 		);
 
@@ -323,7 +323,7 @@ class SendToMP_Settings {
 			$section,
 			[
 				'key'         => 'email_template',
-				'description' => __( 'Custom email body template. Leave blank for default. Use placeholders: {constituent_name}, {message_body}, {mp_name}, etc.', 'sendtomp' ),
+				'description' => __( 'Custom email body template. Leave blank to use the default template for your campaign type (set on the General tab). Placeholders: {constituent_name}, {constituent_email}, {constituent_postcode}, {message_body}, {mp_name}, {mp_constituency}, {mp_party}, {site_name}. The constituent\'s message is inserted at {message_body}.', 'sendtomp' ),
 			]
 		);
 
@@ -348,7 +348,7 @@ class SendToMP_Settings {
 			$section,
 			__( 'Confirmation Settings', 'sendtomp' ),
 			function () {
-				echo '<p>' . esc_html__( 'Configure the email confirmation process for constituents.', 'sendtomp' ) . '</p>';
+				echo '<p>' . esc_html__( 'SendToMP uses a double opt-in process: after a constituent submits a form, they receive an email asking them to confirm before the message is sent to their MP. This ensures GDPR compliance, prevents spam, and means every message that reaches an MP is from a verified, real person.', 'sendtomp' ) . '</p>';
 			},
 			'sendtomp'
 		);
@@ -362,7 +362,7 @@ class SendToMP_Settings {
 			[
 				'key'         => 'confirmation_subject',
 				'type'        => 'text',
-				'description' => __( 'Subject line for the confirmation email sent to constituents.', 'sendtomp' ),
+				'description' => __( 'The subject line of the confirmation email sent to the constituent. Use {mp_name} to include the MP\'s name. Keep it clear and action-oriented — this email needs to be opened for the message to be sent.', 'sendtomp' ),
 			]
 		);
 
@@ -376,7 +376,7 @@ class SendToMP_Settings {
 				'key'         => 'confirmation_expiry',
 				'min'         => 1,
 				'max'         => 168,
-				'description' => __( 'How many hours before a confirmation link expires.', 'sendtomp' ),
+				'description' => __( 'How long the confirmation link remains valid. After this period, unconfirmed submissions are automatically deleted. 24 hours is recommended — long enough for the constituent to check their email, short enough to keep your data clean.', 'sendtomp' ),
 			]
 		);
 
@@ -388,7 +388,7 @@ class SendToMP_Settings {
 			$section,
 			[
 				'key'         => 'consent_text',
-				'description' => __( 'Consent / privacy text shown to the constituent before submission.', 'sendtomp' ),
+				'description' => __( 'Shown on the confirmation page before the constituent clicks "Confirm & Send". Use this to explain what data will be shared with their MP and link to your privacy policy. Leave blank for the default text.', 'sendtomp' ),
 			]
 		);
 
@@ -400,7 +400,7 @@ class SendToMP_Settings {
 			$section,
 			[
 				'key'         => 'thankyou_message',
-				'description' => __( 'Message shown to the constituent after successful confirmation.', 'sendtomp' ),
+				'description' => __( 'Shown after the constituent confirms and their message is sent to the MP. Use this to thank them, explain what to expect next, and encourage social sharing. Leave blank for the default message.', 'sendtomp' ),
 			]
 		);
 	}
@@ -417,7 +417,7 @@ class SendToMP_Settings {
 			$section,
 			__( 'Rate Limit Settings', 'sendtomp' ),
 			function () {
-				echo '<p>' . esc_html__( 'Configure rate limits to prevent abuse. Values are per 24-hour period.', 'sendtomp' ) . '</p>';
+				echo '<p>' . esc_html__( 'Rate limits prevent abuse by capping how many messages can be sent in a 24-hour period. These protect both your site and the MPs who receive your messages. The defaults work well for most campaigns — only adjust if you have a specific reason.', 'sendtomp' ) . '</p>';
 			},
 			'sendtomp'
 		);
@@ -432,7 +432,7 @@ class SendToMP_Settings {
 				'key'         => 'rate_limit_email',
 				'min'         => 1,
 				'max'         => 1000,
-				'description' => __( 'Maximum submissions per email address per day.', 'sendtomp' ),
+				'description' => __( 'Maximum messages one email address can send per day. Prevents a single person flooding MPs. Default: 3.', 'sendtomp' ),
 			]
 		);
 
@@ -446,7 +446,7 @@ class SendToMP_Settings {
 				'key'         => 'rate_limit_ip',
 				'min'         => 1,
 				'max'         => 1000,
-				'description' => __( 'Maximum submissions per IP address per day.', 'sendtomp' ),
+				'description' => __( 'Maximum messages from one IP address per day. Catches automated abuse from a single source. Set higher than per-email to allow shared networks (offices, universities). Default: 10.', 'sendtomp' ),
 			]
 		);
 
@@ -460,7 +460,7 @@ class SendToMP_Settings {
 				'key'         => 'rate_limit_postcode',
 				'min'         => 1,
 				'max'         => 1000,
-				'description' => __( 'Maximum submissions per postcode per day.', 'sendtomp' ),
+				'description' => __( 'Maximum messages from one postcode per day. Prevents overwhelming a single MP. Set higher than per-email to allow multiple genuine constituents from the same area. Default: 20.', 'sendtomp' ),
 			]
 		);
 
@@ -474,7 +474,7 @@ class SendToMP_Settings {
 				'key'         => 'rate_limit_global',
 				'min'         => 1,
 				'max'         => 100000,
-				'description' => __( 'Maximum total submissions across all users per day.', 'sendtomp' ),
+				'description' => __( 'Maximum total messages from your entire site per day. A safety net to prevent runaway abuse. If you hit this limit, all submissions are paused until the next day. Default: 100.', 'sendtomp' ),
 			]
 		);
 	}

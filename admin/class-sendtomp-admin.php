@@ -135,9 +135,17 @@ class SendToMP_Admin {
 		// Check for API URL configuration.
 		$api_url = sendtomp()->get_setting( 'api_url' );
 		if ( empty( $api_url ) ) {
+			$general_url = esc_url( admin_url( 'admin.php?page=sendtomp&tab=general' ) );
+			$portal_url  = esc_url( 'https://bluetorch.co.uk/sendtomp/portal' );
+
 			echo '<div class="notice notice-warning is-dismissible">';
 			echo '<p><strong>' . esc_html__( 'SendToMP:', 'sendtomp' ) . '</strong> ';
-			echo esc_html__( 'The middleware API URL is not configured. Please set it in the General settings tab to enable MP lookups.', 'sendtomp' );
+			echo wp_kses_post( sprintf(
+				/* translators: 1: link to General settings tab, 2: link to Bluetorch portal */
+				__( 'The API connection is not configured yet. Go to <a href="%1$s">SendToMP &rarr; General</a> and enter your API URL and Key — these were provided when you purchased your licence, or you can find them at <a href="%2$s" target="_blank" rel="noopener noreferrer">bluetorch.co.uk/sendtomp/portal</a>. Without this, SendToMP cannot look up MPs by postcode.', 'sendtomp' ),
+				$general_url,
+				$portal_url
+			) );
 			echo '</p></div>';
 		}
 
