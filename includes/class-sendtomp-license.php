@@ -80,6 +80,17 @@ class SendToMP_License {
 			return $status['tier'];
 		}
 
+		// If a license key is set but cache is empty/expired, refresh on-demand
+		// to prevent paid users losing access when cron is unreliable.
+		$key = sendtomp()->get_setting( 'license_key' );
+		if ( ! empty( $key ) && ! $status ) {
+			self::refresh_status();
+			$status = self::get_cached_status();
+			if ( $status && ! empty( $status['valid'] ) && ! empty( $status['tier'] ) ) {
+				return $status['tier'];
+			}
+		}
+
 		return self::TIER_FREE;
 	}
 
@@ -115,12 +126,17 @@ class SendToMP_License {
 	 * @return void
 	 */
 	public static function increment_counter(): void {
+		if ( self::get_tier() !== self::TIER_FREE ) {
+			return;
+		}
+
 		$key     = self::get_counter_transient_key();
 		$counter = (int) get_transient( $key );
 
-		// Set with TTL to end of current month.
-		$end_of_month = strtotime( 'last day of this month 23:59:59' );
-		$ttl          = max( $end_of_month - time(), HOUR_IN_SECONDS );
+		// Set TTL to end of current UTC month (consistent with UTC month key).
+		$now_utc      = time();
+		$end_of_month = gmmktime( 23, 59, 59, (int) gmdate( 'n', $now_utc ), (int) gmdate( 't', $now_utc ), (int) gmdate( 'Y', $now_utc ) );
+		$ttl          = max( $end_of_month - $now_utc, HOUR_IN_SECONDS );
 
 		set_transient( $key, $counter + 1, $ttl );
 	}
@@ -159,6 +175,13 @@ class SendToMP_License {
 	 */
 	public static function activate( string $key ): array {
 		$api_url = self::get_api_url();
+
+		if ( empty( $api_url ) ) {
+			return [
+				'valid'   => false,
+				'message' => __( 'API URL is not configured. Go to Settings → General to set it.', 'sendtomp' ),
+			];
+		}
 
 		$response = wp_remote_post( $api_url . '/license/activate', [
 			'timeout' => 15,
@@ -230,7 +253,8 @@ class SendToMP_License {
 
 		$api_url = self::get_api_url();
 
-		wp_remote_post( $api_url . '/license/deactivate', [
+		if ( ! empty( $api_url ) ) {
+			wp_remote_post( $api_url . '/license/deactivate', [
 			'timeout' => 15,
 			'headers' => [ 'Content-Type' => 'application/json' ],
 			'body'    => wp_json_encode( [
@@ -238,6 +262,7 @@ class SendToMP_License {
 				'site_url'    => home_url(),
 			] ),
 		] );
+		}
 
 		// Clear key and cached status regardless of API response.
 		$settings = get_option( 'sendtomp_settings', [] );
@@ -269,6 +294,10 @@ class SendToMP_License {
 		}
 
 		$api_url = self::get_api_url();
+
+		if ( empty( $api_url ) ) {
+			return;
+		}
 
 		$response = wp_remote_post( $api_url . '/license/check', [
 			'timeout' => 15,

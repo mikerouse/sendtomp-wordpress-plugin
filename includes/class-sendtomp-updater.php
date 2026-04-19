@@ -29,7 +29,7 @@ class SendToMP_Updater {
 	 * @return object Modified transient.
 	 */
 	public static function check_for_update( $transient ) {
-		if ( empty( $transient->checked ) ) {
+		if ( ! is_object( $transient ) || ! isset( $transient->checked ) || empty( $transient->checked ) ) {
 			return $transient;
 		}
 

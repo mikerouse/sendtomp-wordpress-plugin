@@ -999,14 +999,16 @@ class SendToMP_Settings {
 			echo '</button>';
 			echo '<span id="sendtomp-license-result" style="margin-left: 10px;"></span>';
 		} else {
-			$remaining = SendToMP_License::get_remaining();
+			$remaining     = SendToMP_License::get_remaining();
+			$monthly_limit = SendToMP_License::FREE_MONTHLY_LIMIT;
 
 			echo '<div style="background: #f0f0f1; border: 1px solid #c3c4c7; border-radius: 4px; padding: 12px 16px; margin-bottom: 12px;">';
 			echo '<strong>' . esc_html__( 'Free Plan', 'sendtomp' ) . '</strong>';
 			echo '<br><small>' . esc_html( sprintf(
-				/* translators: %d: remaining messages */
-				__( '%d of 25 messages remaining this month', 'sendtomp' ),
-				$remaining
+				/* translators: 1: remaining messages, 2: total monthly limit */
+				__( '%1$d of %2$d messages remaining this month', 'sendtomp' ),
+				$remaining,
+				$monthly_limit
 			) ) . '</small>';
 			echo '</div>';
 

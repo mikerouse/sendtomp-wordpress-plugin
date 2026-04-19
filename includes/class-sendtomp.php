@@ -30,6 +30,9 @@ class SendToMP {
 
 		// Schedule daily license status refresh.
 		add_action( 'sendtomp_license_check', [ 'SendToMP_License', 'refresh_status' ] );
+		if ( ! wp_next_scheduled( 'sendtomp_license_check' ) ) {
+			wp_schedule_event( time(), 'daily', 'sendtomp_license_check' );
+		}
 
 		$this->detect_adapters();
 
