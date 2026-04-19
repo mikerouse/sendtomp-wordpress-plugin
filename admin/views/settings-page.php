@@ -79,20 +79,47 @@ $tabs = array(
 
 		<div class="sendtomp-settings-aside">
 			<div class="sendtomp-sidebar">
-				<h3>Need Help?</h3>
-				<p>Check the documentation and FAQs for setup guides and troubleshooting.</p>
-				<p><a href="https://bluetorch.co.uk/sendtomp" target="_blank" rel="noopener noreferrer">Visit bluetorch.co.uk/sendtomp &rarr;</a></p>
+				<h3><?php esc_html_e( 'Need Help?', 'sendtomp' ); ?></h3>
+				<p><?php esc_html_e( 'Check the documentation and FAQs for setup guides and troubleshooting.', 'sendtomp' ); ?></p>
+				<p><a href="https://bluetorch.co.uk/sendtomp" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Visit bluetorch.co.uk/sendtomp', 'sendtomp' ); ?> &rarr;</a></p>
+			</div>
+
+			<?php if ( ! sendtomp()->can( 'lords' ) ) : ?>
+				<div class="sendtomp-sidebar" style="background: linear-gradient(135deg, #f0f6fc, #e8f0fe); border: 1px solid #72aee6;">
+					<h3 style="color: #2271b1;"><?php esc_html_e( 'Upgrade to Plus', 'sendtomp' ); ?></h3>
+					<p><?php esc_html_e( 'Unlock House of Lords, WPForms, CF7, BCC support, local overrides, and unlimited messages.', 'sendtomp' ); ?></p>
+					<p><a href="https://bluetorch.co.uk/sendtomp#pricing" target="_blank" rel="noopener noreferrer" style="font-weight: 600; color: #2271b1;"><?php esc_html_e( 'View pricing', 'sendtomp' ); ?> &rarr;</a></p>
+				</div>
+			<?php elseif ( ! sendtomp()->can( 'webhook_api' ) ) : ?>
+				<div class="sendtomp-sidebar" style="background: linear-gradient(135deg, #f0f6fc, #e8f0fe); border: 1px solid #72aee6;">
+					<h3 style="color: #2271b1;"><?php esc_html_e( 'Upgrade to Pro', 'sendtomp' ); ?></h3>
+					<p><?php esc_html_e( 'Get the REST API, white-label branding, CSV export, and up to 5 site activations.', 'sendtomp' ); ?></p>
+					<p><a href="https://bluetorch.co.uk/sendtomp#pricing" target="_blank" rel="noopener noreferrer" style="font-weight: 600; color: #2271b1;"><?php esc_html_e( 'View pricing', 'sendtomp' ); ?> &rarr;</a></p>
+				</div>
+			<?php endif; ?>
+
+			<div class="sendtomp-sidebar">
+				<h3><?php esc_html_e( 'SMTP Required', 'sendtomp' ); ?></h3>
+				<p><?php esc_html_e( 'SendToMP requires a transactional email service (Brevo, SendGrid, Postmark, etc.) configured via an SMTP plugin.', 'sendtomp' ); ?></p>
+				<?php
+				$smtp_plugin = ( new SendToMP_Mailer() )->detect_smtp_plugin();
+				if ( $smtp_plugin ) {
+					echo '<p style="color: #00a32a;">&#10003; ' . esc_html( sprintf( __( 'Detected: %s', 'sendtomp' ), $smtp_plugin ) ) . '</p>';
+				} else {
+					echo '<p style="color: #d63638;">&#10007; ' . esc_html__( 'No SMTP plugin detected. Email delivery may be unreliable.', 'sendtomp' ) . '</p>';
+				}
+				?>
 			</div>
 
 			<div class="sendtomp-sidebar">
-				<h3>Recommended: Brevo</h3>
-				<p>For reliable email delivery, we recommend using Brevo (formerly Sendinblue) as your SMTP provider.</p>
-				<p><a href="#" target="_blank" rel="noopener noreferrer">Learn more about Brevo &rarr;</a></p>
+				<h3><?php esc_html_e( 'Campaign Tips', 'sendtomp' ); ?></h3>
+				<p><?php esc_html_e( 'Keep your message concise and personal. MPs respond better to genuine constituent correspondence that references local issues rather than generic template letters.', 'sendtomp' ); ?></p>
 			</div>
 
 			<div class="sendtomp-sidebar">
-				<h3>Campaign Tips</h3>
-				<p>Keep your message concise and personal. MPs respond better to genuine constituent correspondence that references local issues rather than generic template letters.</p>
+				<h3><?php esc_html_e( 'Templates', 'sendtomp' ); ?></h3>
+				<p><?php esc_html_e( 'Browse starter templates for common campaign types.', 'sendtomp' ); ?></p>
+				<p><a href="https://bluetorch.co.uk/sendtomp/templates" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View templates', 'sendtomp' ); ?> &rarr;</a></p>
 			</div>
 		</div>
 	</div>

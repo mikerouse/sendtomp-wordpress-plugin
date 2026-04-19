@@ -86,7 +86,7 @@ class SendToMP_Mailer {
 		$body .= "This link will expire in {$expiry_hours} hours.\n\n";
 		$body .= "If you did not submit this message, you can safely ignore this email.\n";
 
-		if ( sendtomp()->get_setting( 'show_branding' ) ) {
+		if ( SendToMP_License::should_show_branding() ) {
 			$body .= "\n---\nPowered by Bluetorch's SendToMP — verified constituent correspondence.\n";
 		}
 
@@ -122,6 +122,18 @@ class SendToMP_Mailer {
 	}
 
 	private function get_default_mp_email_template(): string {
+		$campaign_type = sendtomp()->get_setting( 'campaign_type' );
+
+		$templates = [
+			'petition'     => "Dear {mp_name},\n\nI am writing as your constituent to ask you to support the following petition.\n\n{message_body}\n\nI would be grateful if you could confirm your position on this matter.\n\nYours sincerely,\n{constituent_name}\n{constituent_postcode}",
+			'advocacy'     => "Dear {mp_name},\n\nAs your constituent, I am writing to urge you to take action on the following issue.\n\n{message_body}\n\nI look forward to hearing your response.\n\nYours sincerely,\n{constituent_name}\n{constituent_postcode}",
+			'consultation' => "Dear {mp_name},\n\nI am writing as your constituent to share my views on an issue currently before Parliament.\n\n{message_body}\n\nThank you for considering my perspective.\n\nYours sincerely,\n{constituent_name}\n{constituent_postcode}",
+		];
+
+		if ( isset( $templates[ $campaign_type ] ) ) {
+			return $templates[ $campaign_type ];
+		}
+
 		return "Dear {mp_name},\n\n{message_body}\n\nYours sincerely,\n{constituent_name}\n{constituent_postcode}\n{constituent_email}";
 	}
 
@@ -139,7 +151,7 @@ class SendToMP_Mailer {
 
 		$footer .= $this->replace_placeholders( $footer_template, $submission );
 
-		if ( sendtomp()->get_setting( 'show_branding' ) ) {
+		if ( SendToMP_License::should_show_branding() ) {
 			$footer .= "\n\nPowered by Bluetorch's SendToMP — verified constituent correspondence. Built by a former parliamentary assistant.";
 		}
 
