@@ -173,7 +173,7 @@ class SendToMP_Settings {
 	 *
 	 * @return void
 	 */
-	public function render_branding_field(): void {
+	public function render_branding_field( array $args = [] ): void {
 		$tier = SendToMP_License::get_tier();
 
 		if ( SendToMP_License::TIER_FREE === $tier ) {
@@ -197,7 +197,7 @@ class SendToMP_Settings {
 	 *
 	 * @return void
 	 */
-	public function render_directory_optin_field(): void {
+	public function render_directory_optin_field( array $args = [] ): void {
 		if ( ! sendtomp()->can( 'lords' ) ) {
 			echo '<p class="description">';
 			echo esc_html__( 'Campaign directory listing is available on Plus and Pro plans.', 'sendtomp' );

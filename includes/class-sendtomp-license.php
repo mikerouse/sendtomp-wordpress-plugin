@@ -84,7 +84,16 @@ class SendToMP_License {
 			return true;
 		}
 
-		return (bool) sendtomp()->get_setting( 'show_branding' );
+		// Check whether the user has explicitly saved a branding preference.
+		// If not, apply tier-specific defaults: Plus = on, Pro = off.
+		$saved = get_option( 'sendtomp_settings', [] );
+
+		if ( is_array( $saved ) && array_key_exists( 'show_branding', $saved ) ) {
+			return (bool) $saved['show_branding'];
+		}
+
+		// No explicit save — use tier default.
+		return self::TIER_PRO !== $tier;
 	}
 
 	/**
