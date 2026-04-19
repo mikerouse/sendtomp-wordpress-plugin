@@ -97,32 +97,6 @@ class SendToMP_Settings {
 		);
 
 		add_settings_field(
-			'api_url',
-			__( 'API URL', 'sendtomp' ),
-			[ $this, 'render_text_field' ],
-			'sendtomp',
-			$section,
-			[
-				'key'         => 'api_url',
-				'type'        => 'url',
-				'description' => __( 'The Bluetorch API endpoint that resolves postcodes to MPs and handles licence validation. You received this when you signed up — find it at bluetorch.co.uk/sendtomp/portal. Free users: use the public endpoint shown in your welcome email.', 'sendtomp' ),
-			]
-		);
-
-		add_settings_field(
-			'api_key',
-			__( 'API Key', 'sendtomp' ),
-			[ $this, 'render_text_field' ],
-			'sendtomp',
-			$section,
-			[
-				'key'         => 'api_key',
-				'type'        => 'password',
-				'description' => __( 'Authenticates your site with the Bluetorch API. Find your key at bluetorch.co.uk/sendtomp/portal alongside your API URL.', 'sendtomp' ),
-			]
-		);
-
-		add_settings_field(
 			'default_house',
 			__( 'Default House', 'sendtomp' ),
 			[ $this, 'render_select_field' ],
@@ -985,11 +959,6 @@ class SendToMP_Settings {
 			wp_send_json_error( [ 'message' => __( 'Please enter a valid UK postcode.', 'sendtomp' ) ] );
 		}
 
-		$api_url = sendtomp()->get_setting( 'api_url' );
-		if ( empty( $api_url ) ) {
-			wp_send_json_error( [ 'message' => __( 'MP lookup is not configured.', 'sendtomp' ) ] );
-		}
-
 		// Rate limit postcode lookups by IP (30 per minute).
 		$ip            = SendToMP_Pipeline::get_client_ip();
 		$throttle_key  = 'sendtomp_lookup_' . md5( $ip );
@@ -1104,17 +1073,11 @@ class SendToMP_Settings {
 			wp_send_json_error( [ 'message' => __( 'You must agree to the terms to proceed.', 'sendtomp' ) ] );
 		}
 
-		$api_url = sendtomp()->get_setting( 'api_url' );
-
-		if ( empty( $api_url ) ) {
-			wp_send_json_error( [ 'message' => __( 'API is not configured.', 'sendtomp' ) ] );
-		}
-
 		$tier             = SendToMP_License::get_tier();
 		$requires_payment = SendToMP_License::TIER_PRO !== $tier;
 
-		// Submit enquiry to Bluetorch API (uses same base URL as middleware).
-		$response = wp_remote_post( untrailingslashit( $api_url ) . '/brevo/enquiry', [
+		// Submit enquiry to Bluetorch API.
+		$response = wp_remote_post( untrailingslashit( SENDTOMP_API_BASE ) . '/api/brevo/enquiry', [
 			'timeout' => 15,
 			'headers' => [ 'Content-Type' => 'application/json' ],
 			'body'    => wp_json_encode( [
@@ -1428,14 +1391,6 @@ TEXT;
 		$sanitized = $existing;
 
 		// General.
-		if ( isset( $input['api_url'] ) ) {
-			$sanitized['api_url'] = esc_url_raw( $input['api_url'] );
-		}
-
-		if ( isset( $input['api_key'] ) ) {
-			$sanitized['api_key'] = sanitize_text_field( $input['api_key'] );
-		}
-
 		if ( isset( $input['default_house'] ) ) {
 			$sanitized['default_house'] = in_array( $input['default_house'], [ 'commons', 'lords' ], true )
 				? $input['default_house']

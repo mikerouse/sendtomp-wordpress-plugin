@@ -40,11 +40,7 @@ class SendToMP_Updater {
 			return $transient;
 		}
 
-		$api_url = untrailingslashit( (string) sendtomp()->get_setting( 'api_url' ) );
-
-		if ( empty( $api_url ) ) {
-			return $transient;
-		}
+		$api_url = untrailingslashit( SENDTOMP_API_BASE ) . '/api';
 
 		$response = wp_remote_post( $api_url . '/license/check-update', [
 			'timeout' => 10,
@@ -104,9 +100,9 @@ class SendToMP_Updater {
 		}
 
 		$key     = sendtomp()->get_setting( 'license_key' );
-		$api_url = untrailingslashit( (string) sendtomp()->get_setting( 'api_url' ) );
+		$api_url = untrailingslashit( SENDTOMP_API_BASE ) . '/api';
 
-		if ( empty( $key ) || empty( $api_url ) ) {
+		if ( empty( $key ) ) {
 			return $result;
 		}
 
