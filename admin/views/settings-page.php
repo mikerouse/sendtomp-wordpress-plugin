@@ -5,6 +5,7 @@ $current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['t
 $tabs = array(
 	'general'      => 'General',
 	'email'        => 'Email',
+	'delivery'     => 'Email Delivery',
 	'confirmation' => 'Confirmation',
 	'rate-limits'  => 'Rate Limits',
 	'overrides'    => 'Address Overrides',
@@ -53,7 +54,9 @@ $tabs = array(
 				</div>
 			<?php endif; ?>
 
-			<?php if ($current_tab === 'overrides') : ?>
+			<?php if ($current_tab === 'delivery') : ?>
+				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/delivery-page.php'; ?>
+			<?php elseif ($current_tab === 'overrides') : ?>
 				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/overrides-page.php'; ?>
 			<?php elseif ($current_tab === 'log') : ?>
 				<form method="post" action="options.php">

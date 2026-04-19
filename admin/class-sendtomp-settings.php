@@ -29,6 +29,7 @@ class SendToMP_Settings {
 		add_action( 'wp_ajax_sendtomp_lookup_postcode', [ $this, 'handle_lookup_postcode' ] );
 		add_action( 'wp_ajax_nopriv_sendtomp_lookup_postcode', [ $this, 'handle_lookup_postcode' ] );
 		add_action( 'wp_ajax_sendtomp_erase_data', [ $this, 'handle_erase_data' ] );
+		add_action( 'wp_ajax_sendtomp_brevo_enquiry', [ $this, 'handle_brevo_enquiry' ] );
 		add_action( 'wp_ajax_sendtomp_save_override', [ $this, 'handle_save_override' ] );
 		add_action( 'wp_ajax_sendtomp_delete_override', [ $this, 'handle_delete_override' ] );
 	}
@@ -1073,6 +1074,80 @@ class SendToMP_Settings {
 	}
 
 	/**
+	 * AJAX handler — submit Brevo partner enquiry to Bluetorch.
+	 *
+	 * @return void
+	 */
+	public function handle_brevo_enquiry(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$first_name   = isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '';
+		$last_name    = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
+		$company_name = isset( $_POST['company_name'] ) ? sanitize_text_field( wp_unslash( $_POST['company_name'] ) ) : '';
+		$website      = isset( $_POST['website'] ) ? esc_url_raw( wp_unslash( $_POST['website'] ) ) : '';
+		$email        = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+		$consent      = ! empty( $_POST['consent'] );
+
+		if ( empty( $first_name ) || empty( $last_name ) || empty( $email ) ) {
+			wp_send_json_error( [ 'message' => __( 'First name, last name, and email are required.', 'sendtomp' ) ] );
+		}
+
+		if ( ! is_email( $email ) ) {
+			wp_send_json_error( [ 'message' => __( 'A valid email address is required.', 'sendtomp' ) ] );
+		}
+
+		if ( ! $consent ) {
+			wp_send_json_error( [ 'message' => __( 'You must agree to the terms to proceed.', 'sendtomp' ) ] );
+		}
+
+		$api_url = sendtomp()->get_setting( 'api_url' );
+
+		if ( empty( $api_url ) ) {
+			wp_send_json_error( [ 'message' => __( 'API is not configured.', 'sendtomp' ) ] );
+		}
+
+		$tier     = SendToMP_License::get_tier();
+		$is_free  = SendToMP_License::TIER_PRO !== $tier;
+
+		// Submit enquiry to Bluetorch API.
+		$response = wp_remote_post( untrailingslashit( $api_url ) . '/brevo/enquiry', [
+			'timeout' => 15,
+			'headers' => [ 'Content-Type' => 'application/json' ],
+			'body'    => wp_json_encode( [
+				'first_name'   => $first_name,
+				'last_name'    => $last_name,
+				'company_name' => $company_name,
+				'website'      => $website,
+				'email'        => $email,
+				'site_url'     => home_url(),
+				'tier'         => $tier,
+				'requires_payment' => $is_free,
+			] ),
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( [ 'message' => __( 'Could not submit your enquiry. Please try again later.', 'sendtomp' ) ] );
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+
+		if ( $code < 200 || $code >= 300 ) {
+			wp_send_json_error( [ 'message' => __( 'Enquiry submission failed. Please try again later.', 'sendtomp' ) ] );
+		}
+
+		wp_send_json_success( [
+			'message'          => $is_free
+				? __( 'Thanks! We\'ll be in touch to set up your Brevo account. The one-off setup fee of £150 will be invoiced separately.', 'sendtomp' )
+				: __( 'Thanks! As a Pro subscriber, this service is included at no extra cost. We\'ll be in touch to set up your Brevo account.', 'sendtomp' ),
+			'requires_payment' => $is_free,
+		] );
+	}
+
+	/**
 	 * Render a text input field.
 	 *
 	 * @param array $args Field arguments.
@@ -1510,7 +1585,7 @@ TEXT;
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
 
-		$valid_tabs = [ 'general', 'email', 'confirmation', 'rate-limits', 'overrides', 'webhook', 'license', 'log' ];
+		$valid_tabs = [ 'general', 'email', 'delivery', 'confirmation', 'rate-limits', 'overrides', 'webhook', 'license', 'log' ];
 
 		if ( ! in_array( $tab, $valid_tabs, true ) ) {
 			$tab = 'general';
