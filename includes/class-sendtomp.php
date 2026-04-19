@@ -24,6 +24,13 @@ class SendToMP {
 
 		$this->maybe_upgrade_db();
 		$this->load_dependencies();
+
+		// Initialise custom updater (checks for plugin updates via licensing API).
+		SendToMP_Updater::init();
+
+		// Schedule daily license status refresh.
+		add_action( 'sendtomp_license_check', [ 'SendToMP_License', 'refresh_status' ] );
+
 		$this->detect_adapters();
 
 		// Confirmation flow must be loaded on both frontend and admin.
@@ -148,12 +155,12 @@ class SendToMP {
 
 	/**
 	 * Check whether the current license tier supports a given feature.
-	 * Phase 6 will implement proper tier checking. For now, all features are enabled.
+	 *
+	 * @param string $feature Feature slug.
+	 * @return bool
 	 */
 	public function can( $feature ) {
-		// Features: 'lords', 'bcc', 'webhook_api', 'remove_branding',
-		// 'local_overrides', 'wpforms_adapter', 'cf7_adapter', 'csv_export'
-		return true;
+		return SendToMP_License::can( $feature );
 	}
 
 	public static function activate() {
@@ -164,6 +171,11 @@ class SendToMP {
 		// Schedule daily log purge.
 		if ( ! wp_next_scheduled( 'sendtomp_purge_old_logs' ) ) {
 			wp_schedule_event( time(), 'daily', 'sendtomp_purge_old_logs' );
+		}
+
+		// Schedule daily license status refresh.
+		if ( ! wp_next_scheduled( 'sendtomp_license_check' ) ) {
+			wp_schedule_event( time(), 'daily', 'sendtomp_license_check' );
 		}
 	}
 
