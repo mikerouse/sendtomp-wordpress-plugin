@@ -60,6 +60,28 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 		return self::$instance;
 	}
 
+	/**
+	 * Enqueue scripts for the GF feed settings page.
+	 *
+	 * @return array
+	 */
+	public function scripts() {
+		return array_merge( parent::scripts(), [
+			[
+				'handle'   => 'sendtomp-peer-search',
+				'src'      => SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-peer-search.js',
+				'version'  => $this->_version,
+				'deps'     => [ 'jquery' ],
+				'enqueue'  => [
+					[ 'admin_page' => [ 'form_settings' ] ],
+				],
+				'callback' => function() {
+					SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
+				},
+			],
+		] );
+	}
+
 	// -------------------------------------------------------------------------
 	// SendToMP_Form_Adapter_Interface methods
 	// -------------------------------------------------------------------------
@@ -194,6 +216,27 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 						],
 						'tooltip' => esc_html__( 'Select which House of Parliament to send messages to.', 'sendtomp' ),
 					],
+					[
+						'label'    => esc_html__( 'Target Peer', 'sendtomp' ),
+						'type'     => 'text',
+						'name'     => 'target_member_name',
+						'class'    => 'medium sendtomp-peer-search',
+						'tooltip'  => esc_html__( 'Search for and select a Peer. Required when Target House is Lords.', 'sendtomp' ),
+						'dependency' => [
+							'live'   => true,
+							'fields' => [
+								[
+									'field'  => 'target_house',
+									'values' => [ 'lords' ],
+								],
+							],
+						],
+					],
+					[
+						'label' => '',
+						'type'  => 'hidden',
+						'name'  => 'target_member_id',
+					],
 				],
 			],
 			// Section 2: Field mapping.
@@ -279,9 +322,14 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 
 		// Build the submission with consistent metadata keys.
 		$submission = new SendToMP_Submission( $mapped_data );
-		$submission->source_adapter = 'gravity-forms';
+		$submission->source_adapter = $this->get_slug();
 		$submission->source_form_id = (string) $form['id'];
 		$submission->target_house   = rgar( $feed['meta'], 'target_house', 'commons' );
+
+		if ( 'lords' === $submission->target_house ) {
+			$submission->target_member_id = (int) rgar( $feed['meta'], 'target_member_id', 0 );
+		}
+
 		$submission->raw_data       = $entry;
 		$submission->metadata       = [
 			'submitted_at' => gmdate( 'Y-m-d H:i:s' ),
@@ -302,6 +350,8 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 				$entry,
 				$form
 			);
+
+			SendToMP_Logger::log( $submission, 'error', $result->get_error_message() );
 		}
 	}
 

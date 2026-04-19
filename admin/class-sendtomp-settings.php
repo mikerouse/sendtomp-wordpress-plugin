@@ -22,6 +22,7 @@ class SendToMP_Settings {
 		add_action( 'wp_ajax_sendtomp_test_email', [ $this, 'handle_test_email' ] );
 		add_action( 'wp_ajax_sendtomp_purge_logs', [ $this, 'handle_purge_logs' ] );
 		add_action( 'wp_ajax_sendtomp_generate_webhook_key', [ $this, 'handle_generate_webhook_key' ] );
+		add_action( 'wp_ajax_sendtomp_search_members', [ $this, 'handle_search_members' ] );
 	}
 
 	/**
@@ -667,6 +668,36 @@ class SendToMP_Settings {
 			'key'     => $raw_key,
 			'message' => __( 'API key generated. Copy it now — it will not be shown again.', 'sendtomp' ),
 		] );
+	}
+
+	/**
+	 * AJAX handler — search for members (Peers/MPs) via the middleware API.
+	 *
+	 * @return void
+	 */
+	public function handle_search_members(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$query = isset( $_POST['query'] ) ? sanitize_text_field( wp_unslash( $_POST['query'] ) ) : '';
+		$house = isset( $_POST['house'] ) ? sanitize_text_field( wp_unslash( $_POST['house'] ) ) : 'lords';
+		$party = isset( $_POST['party'] ) ? sanitize_text_field( wp_unslash( $_POST['party'] ) ) : '';
+
+		if ( strlen( $query ) < 2 ) {
+			wp_send_json_success( [ 'results' => [] ] );
+		}
+
+		$api_client = new SendToMP_API_Client();
+		$results    = $api_client->search_members( $query, $house, $party );
+
+		if ( is_wp_error( $results ) ) {
+			wp_send_json_error( [ 'message' => $results->get_error_message() ] );
+		}
+
+		wp_send_json_success( [ 'results' => $results ] );
 	}
 
 	/**

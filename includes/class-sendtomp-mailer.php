@@ -35,6 +35,11 @@ class SendToMP_Mailer {
 
 		$subject = $this->replace_placeholders( $settings['subject_template'], $submission );
 
+		// For Lords with shared inbox, prepend FAO to subject.
+		if ( $submission->is_shared_inbox() ) {
+			$subject = 'FAO: ' . $submission->resolved_member['name'] . ' - ' . $subject;
+		}
+
 		$template = ! empty( $settings['email_template'] )
 			? $settings['email_template']
 			: $this->get_default_mp_email_template();
@@ -70,7 +75,8 @@ class SendToMP_Mailer {
 		$confirmation_url = $this->get_confirmation_url( $token );
 		$expiry_hours     = sendtomp()->get_setting( 'confirmation_expiry' );
 
-		$body  = "You recently submitted a message to {$mp_name} ({$mp_constituency}) via " . get_bloginfo( 'name' ) . ".\n\n";
+		$location_label = ! empty( $mp_constituency ) ? " ({$mp_constituency})" : '';
+		$body  = "You recently submitted a message to {$mp_name}{$location_label} via " . get_bloginfo( 'name' ) . ".\n\n";
 		$body .= "Please confirm you want to send this message by clicking the link below:\n\n";
 		$body .= $confirmation_url . "\n\n";
 		$body .= "--- Your message preview ---\n\n";
@@ -107,6 +113,7 @@ class SendToMP_Mailer {
 			'{mp_constituency}'      => isset( $member['constituency'] ) ? $member['constituency'] : '',
 			'{mp_party}'             => isset( $member['party'] ) ? $member['party'] : '',
 			'{mp_house}'             => isset( $member['house'] ) ? $member['house'] : '',
+			'{contact_quality}'      => isset( $member['contact_quality'] ) ? $member['contact_quality'] : 'direct',
 			'{site_name}'            => get_bloginfo( 'name' ),
 			'{site_url}'             => home_url(),
 		];
@@ -120,10 +127,17 @@ class SendToMP_Mailer {
 
 	private function get_mp_email_footer( SendToMP_Submission $submission ): string {
 		$footer  = "---\n";
-		$footer .= $this->replace_placeholders(
-			"This message was sent by {constituent_name} ({constituent_postcode}) via {site_name}. The sender verified their email address before this message was sent. Reply directly to {constituent_email}.",
-			$submission
-		);
+
+		// Shared inbox transparency for Lords.
+		if ( $submission->is_shared_inbox() ) {
+			$footer .= 'Note: This message is intended for the attention of ' . $submission->resolved_member['name'] . ".\n\n";
+		}
+
+		$footer_template = ! empty( $submission->constituent_postcode )
+			? 'This message was sent by {constituent_name} ({constituent_postcode}) via {site_name}. The sender verified their email address before this message was sent. Reply directly to {constituent_email}.'
+			: 'This message was sent by {constituent_name} via {site_name}. The sender verified their email address before this message was sent. Reply directly to {constituent_email}.';
+
+		$footer .= $this->replace_placeholders( $footer_template, $submission );
 
 		if ( sendtomp()->get_setting( 'show_branding' ) ) {
 			$footer .= "\n\nPowered by Bluetorch's SendToMP — verified constituent correspondence. Built by a former parliamentary assistant.";

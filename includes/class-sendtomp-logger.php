@@ -30,6 +30,7 @@ class SendToMP_Logger {
 			target_member_id int(11) NOT NULL DEFAULT 0,
 			house varchar(10) NOT NULL DEFAULT 'commons',
 			override_applied varchar(10) DEFAULT NULL,
+			contact_quality varchar(20) DEFAULT NULL,
 			delivery_status varchar(20) NOT NULL DEFAULT 'pending_confirmation',
 			error_message text DEFAULT NULL,
 			source_adapter varchar(50) NOT NULL DEFAULT '',
@@ -73,6 +74,7 @@ class SendToMP_Logger {
 			'target_member_id'    => isset( $member['id'] ) ? (int) $member['id'] : $submission->target_member_id,
 			'house'               => $submission->target_house,
 			'override_applied'    => $override_applied,
+			'contact_quality'     => isset( $member['contact_quality'] ) ? $member['contact_quality'] : null,
 			'delivery_status'     => $status,
 			'error_message'       => $error,
 			'source_adapter'      => $submission->source_adapter,
@@ -89,6 +91,7 @@ class SendToMP_Logger {
 			'%d', // target_member_id
 			'%s', // house
 			'%s', // override_applied
+			'%s', // contact_quality
 			'%s', // delivery_status
 			'%s', // error_message
 			'%s', // source_adapter

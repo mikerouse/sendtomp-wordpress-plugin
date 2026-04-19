@@ -533,8 +533,19 @@ class SendToMP_Confirmation {
 				<div class="body"><?php echo $message_body; ?></div>
 			</div>
 
+			<?php
+			$is_lords  = isset( $resolved_member['house'] ) && 'lords' === $resolved_member['house'];
+			$is_shared = isset( $resolved_member['contact_quality'] ) && 'shared' === $resolved_member['contact_quality'];
+			?>
+
+			<?php if ( $is_lords && $is_shared ) : ?>
+				<div style="background: #f0f6fc; border: 1px solid #72aee6; border-radius: 4px; padding: 12px 16px; margin: 16px 0; font-size: 0.9em; color: #1d2327;">
+					This message will be sent to the House of Lords general contact address, marked for the attention of <?php echo $mp_name; ?>.
+				</div>
+			<?php endif; ?>
+
 			<div class="sendtomp-consent">
-				By confirming, you consent to your name, email address, postcode, and message
+				By confirming, you consent to your name, email address<?php echo $is_lords ? '' : ', postcode,'; ?> and message
 				being sent to <?php echo $mp_name; ?><?php echo $mp_constituency ? ', ' . $mp_constituency : ''; ?>.
 				<?php echo $mp_name; ?> may reply to you directly.
 			</div>
@@ -573,12 +584,19 @@ class SendToMP_Confirmation {
 		$show_branding = sendtomp()->get_setting( 'show_branding' );
 
 		// Social sharing URLs.
-		$share_text   = rawurlencode( sprintf( 'I just wrote to my MP, %s, about an issue I care about.', $mp_name ) );
+		$is_lords     = isset( $resolved_member['house'] ) && 'lords' === $resolved_member['house'];
+		$share_label  = $is_lords
+			? $mp_name . ' in the House of Lords'
+			: 'my MP, ' . $mp_name;
+		$share_text   = rawurlencode( sprintf( 'I just wrote to %s about an issue I care about.', $share_label ) );
 		$share_url    = rawurlencode( home_url( '/' ) );
 		$twitter_url  = 'https://twitter.com/intent/tweet?text=' . $share_text . '&url=' . $share_url;
 		$facebook_url = 'https://www.facebook.com/sharer/sharer.php?u=' . $share_url;
-		$email_subject = rawurlencode( sprintf( 'I wrote to my MP, %s', $mp_name ) );
-		$email_body    = rawurlencode( sprintf( "I just wrote to my MP, %s (%s), about an issue I care about. You can write to yours too: %s", $mp_name, $mp_constituency, home_url( '/' ) ) );
+		$email_subject = rawurlencode( sprintf( 'I wrote to %s', $share_label ) );
+		$email_body_parts = $is_lords
+			? sprintf( "I just wrote to %s about an issue I care about. You can too: %s", $share_label, home_url( '/' ) )
+			: sprintf( "I just wrote to my MP, %s (%s), about an issue I care about. You can write to yours too: %s", $mp_name, $mp_constituency, home_url( '/' ) );
+		$email_body    = rawurlencode( $email_body_parts );
 		$email_url     = 'mailto:?subject=' . $email_subject . '&body=' . $email_body;
 
 		status_header( 200 );

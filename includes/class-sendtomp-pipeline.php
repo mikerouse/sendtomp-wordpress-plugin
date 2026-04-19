@@ -29,8 +29,10 @@ class SendToMP_Pipeline {
 	public static function process( SendToMP_Submission $submission, array $options = [] ) {
 		$skip_confirmation = isset( $options['skip_confirmation'] ) && true === $options['skip_confirmation'];
 
-		// 1. Normalise postcode.
-		$submission->normalise_postcode();
+		// 1. Normalise postcode (Commons only — Lords don't use postcodes).
+		if ( 'commons' === $submission->target_house ) {
+			$submission->normalise_postcode();
+		}
 
 		// 2. Validate submission data.
 		$valid = $submission->validate();
@@ -45,10 +47,19 @@ class SendToMP_Pipeline {
 		}
 
 		// 4. Resolve the member via the middleware API.
-		$api_response = ( new SendToMP_API_Client() )->resolve_member(
-			$submission->constituent_postcode,
-			$submission->target_house
-		);
+		$api_client = new SendToMP_API_Client();
+
+		if ( 'lords' === $submission->target_house && $submission->target_member_id > 0 ) {
+			$api_response = $api_client->resolve_member_by_id(
+				$submission->target_member_id,
+				'lords'
+			);
+		} else {
+			$api_response = $api_client->resolve_member(
+				$submission->constituent_postcode,
+				$submission->target_house
+			);
+		}
 		if ( is_wp_error( $api_response ) ) {
 			return $api_response;
 		}
@@ -65,6 +76,7 @@ class SendToMP_Pipeline {
 			'house'            => isset( $member['house'] ) ? $member['house'] : $submission->target_house,
 			'delivery_email'   => isset( $delivery['email'] ) ? $delivery['email'] : '',
 			'override_applied' => isset( $delivery['override_applied'] ) ? $delivery['override_applied'] : false,
+			'contact_quality'  => isset( $delivery['contact_quality'] ) ? $delivery['contact_quality'] : 'direct',
 		];
 
 		$submission->target_member_id = $submission->resolved_member['id'];

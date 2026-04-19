@@ -107,6 +107,8 @@ class SendToMP_Admin {
 			'ajax_url' => admin_url( 'admin-ajax.php' ),
 			'nonce'    => wp_create_nonce( 'sendtomp_admin' ),
 		] );
+
+		SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 	}
 
 	/**

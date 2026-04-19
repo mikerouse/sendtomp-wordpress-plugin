@@ -53,6 +53,7 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 		add_action( 'wpcf7_before_send_mail', [ $this, 'handle_submission' ], 10, 3 );
 		add_filter( 'wpcf7_editor_panels', [ $this, 'add_editor_panel' ] );
 		add_action( 'wpcf7_save_contact_form', [ $this, 'save_editor_panel' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_editor_assets' ] );
 	}
 
 	/**
@@ -154,6 +155,11 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 		$submission = $this->create_submission( $mapped_data );
 		$submission->source_form_id = (string) $form_id;
 		$submission->target_house   = isset( $settings['target_house'] ) ? sanitize_text_field( $settings['target_house'] ) : 'commons';
+
+		if ( 'lords' === $submission->target_house ) {
+			$submission->target_member_id = isset( $settings['target_member_id'] ) ? (int) $settings['target_member_id'] : 0;
+		}
+
 		$submission->raw_data       = $posted_data;
 
 		$result = $this->process_submission( $submission );
@@ -274,7 +280,32 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 						</select>
 					</td>
 				</tr>
+				<tr class="sendtomp-lords-only" style="<?php echo 'lords' === $target_house ? '' : 'display:none;'; ?>">
+					<th scope="row">
+						<label for="sendtomp-peer-search"><?php esc_html_e( 'Target Peer', 'sendtomp' ); ?></label>
+					</th>
+					<td>
+						<input type="text" id="sendtomp-peer-search" name="sendtomp-peer-search" class="regular-text sendtomp-peer-search"
+							placeholder="<?php esc_attr_e( 'Search for a Peer...', 'sendtomp' ); ?>"
+							value="<?php echo esc_attr( isset( $settings['target_member_name'] ) ? $settings['target_member_name'] : '' ); ?>" />
+						<input type="hidden" id="sendtomp-target_member_id" name="sendtomp-target_member_id"
+							value="<?php echo esc_attr( isset( $settings['target_member_id'] ) ? $settings['target_member_id'] : '' ); ?>" />
+						<p class="description"><?php esc_html_e( 'Required when Target House is Lords.', 'sendtomp' ); ?></p>
+					</td>
+				</tr>
 			</table>
+
+			<script>
+			jQuery(function($) {
+				$('#sendtomp-target_house').on('change', function() {
+					if ($(this).val() === 'lords') {
+						$('.sendtomp-lords-only').show();
+					} else {
+						$('.sendtomp-lords-only').hide();
+					}
+				});
+			});
+			</script>
 
 			<h3><?php esc_html_e( 'Field Mapping', 'sendtomp' ); ?></h3>
 			<p><?php esc_html_e( 'Map your form fields to the SendToMP submission fields.', 'sendtomp' ); ?></p>
@@ -326,6 +357,8 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 			'field_constituent_address'  => isset( $_POST['sendtomp-field_constituent_address'] ) ? sanitize_text_field( wp_unslash( $_POST['sendtomp-field_constituent_address'] ) ) : '',
 			'field_message_subject'      => isset( $_POST['sendtomp-field_message_subject'] ) ? sanitize_text_field( wp_unslash( $_POST['sendtomp-field_message_subject'] ) ) : '',
 			'field_message_body'         => isset( $_POST['sendtomp-field_message_body'] ) ? sanitize_text_field( wp_unslash( $_POST['sendtomp-field_message_body'] ) ) : '',
+			'target_member_id'           => isset( $_POST['sendtomp-target_member_id'] ) ? absint( $_POST['sendtomp-target_member_id'] ) : 0,
+			'target_member_name'         => isset( $_POST['sendtomp-peer-search'] ) ? sanitize_text_field( wp_unslash( $_POST['sendtomp-peer-search'] ) ) : '',
 		];
 
 		// Validate target_house.
@@ -334,5 +367,19 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 		}
 
 		update_post_meta( $form_id, self::META_KEY, $settings );
+	}
+
+	/**
+	 * Enqueue peer search JS on CF7 editor pages.
+	 *
+	 * @param string $hook The admin page hook.
+	 * @return void
+	 */
+	public function enqueue_editor_assets( string $hook ): void {
+		if ( false === strpos( $hook, 'wpcf7' ) ) {
+			return;
+		}
+
+		SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 	}
 }

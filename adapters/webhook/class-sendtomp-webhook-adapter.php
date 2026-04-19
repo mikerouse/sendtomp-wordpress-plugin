@@ -108,9 +108,10 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 				],
 				'constituent_postcode' => [
 					'type'              => 'string',
-					'required'          => true,
+					'required'          => false,
+					'default'           => '',
 					'sanitize_callback' => 'sanitize_text_field',
-					'description'       => __( 'UK postcode of the constituent.', 'sendtomp' ),
+					'description'       => __( 'UK postcode. Required for House of Commons.', 'sendtomp' ),
 				],
 				'constituent_address' => [
 					'type'              => 'string',
@@ -137,6 +138,13 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 					'enum'              => [ 'commons', 'lords' ],
 					'sanitize_callback' => 'sanitize_text_field',
 					'description'       => __( 'Target house: commons or lords.', 'sendtomp' ),
+				],
+				'target_member_id' => [
+					'type'              => 'integer',
+					'required'          => false,
+					'default'           => 0,
+					'sanitize_callback' => 'absint',
+					'description'       => __( 'Member ID of the target Peer. Required when target_house is lords.', 'sendtomp' ),
 				],
 				'skip_confirmation' => [
 					'type'              => 'boolean',
@@ -252,6 +260,11 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 		$submission = $this->create_submission( $mapped_data );
 		$submission->source_form_id = 'api';
 		$submission->target_house   = $target_house;
+
+		if ( 'lords' === $target_house ) {
+			$submission->target_member_id = isset( $body['target_member_id'] ) ? absint( $body['target_member_id'] ) : 0;
+		}
+
 		$submission->raw_data       = map_deep( $body, 'sanitize_text_field' );
 
 		// Run through the shared pipeline (with or without confirmation).
@@ -311,6 +324,7 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			'invalid_postcode'   => 422,
 			'missing_message'    => 422,
 			'invalid_house'      => 422,
+			'missing_member_id'  => 422,
 
 			// Rate limits → 429.
 			'rate_limit_email'    => 429,
