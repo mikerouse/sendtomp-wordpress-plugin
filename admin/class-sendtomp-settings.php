@@ -23,6 +23,8 @@ class SendToMP_Settings {
 		add_action( 'wp_ajax_sendtomp_purge_logs', [ $this, 'handle_purge_logs' ] );
 		add_action( 'wp_ajax_sendtomp_generate_webhook_key', [ $this, 'handle_generate_webhook_key' ] );
 		add_action( 'wp_ajax_sendtomp_search_members', [ $this, 'handle_search_members' ] );
+		add_action( 'wp_ajax_sendtomp_save_override', [ $this, 'handle_save_override' ] );
+		add_action( 'wp_ajax_sendtomp_delete_override', [ $this, 'handle_delete_override' ] );
 	}
 
 	/**
@@ -701,6 +703,78 @@ class SendToMP_Settings {
 	}
 
 	/**
+	 * AJAX handler — save a local address override.
+	 *
+	 * @return void
+	 */
+	public function handle_save_override(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$member_id   = isset( $_POST['member_id'] ) ? absint( $_POST['member_id'] ) : 0;
+		$member_name = isset( $_POST['member_name'] ) ? sanitize_text_field( wp_unslash( $_POST['member_name'] ) ) : '';
+		$house       = isset( $_POST['house'] ) ? sanitize_text_field( wp_unslash( $_POST['house'] ) ) : 'commons';
+		$email       = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+		$notes       = isset( $_POST['notes'] ) ? sanitize_textarea_field( wp_unslash( $_POST['notes'] ) ) : '';
+
+		if ( $member_id < 1 ) {
+			wp_send_json_error( [ 'message' => __( 'Please select a member.', 'sendtomp' ) ] );
+		}
+
+		if ( ! is_email( $email ) ) {
+			wp_send_json_error( [ 'message' => __( 'A valid email address is required.', 'sendtomp' ) ] );
+		}
+
+		if ( ! in_array( $house, [ 'commons', 'lords' ], true ) ) {
+			$house = 'commons';
+		}
+
+		$saved = SendToMP_Overrides::save( $member_id, $member_name, $house, $email, $notes );
+
+		if ( ! $saved ) {
+			wp_send_json_error( [ 'message' => __( 'Failed to save override.', 'sendtomp' ) ] );
+		}
+
+		wp_send_json_success( [
+			'message' => sprintf(
+				/* translators: %s: member name */
+				__( 'Override saved for %s.', 'sendtomp' ),
+				$member_name
+			),
+		] );
+	}
+
+	/**
+	 * AJAX handler — delete a local address override.
+	 *
+	 * @return void
+	 */
+	public function handle_delete_override(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$member_id = isset( $_POST['member_id'] ) ? absint( $_POST['member_id'] ) : 0;
+
+		if ( $member_id < 1 ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid member ID.', 'sendtomp' ) ] );
+		}
+
+		$deleted = SendToMP_Overrides::delete( $member_id );
+
+		if ( ! $deleted ) {
+			wp_send_json_error( [ 'message' => __( 'Override not found.', 'sendtomp' ) ] );
+		}
+
+		wp_send_json_success( [ 'message' => __( 'Override deleted.', 'sendtomp' ) ] );
+	}
+
+	/**
 	 * Render a text input field.
 	 *
 	 * @param array $args Field arguments.
@@ -1044,7 +1118,7 @@ class SendToMP_Settings {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
 
-		$valid_tabs = [ 'general', 'email', 'confirmation', 'rate-limits', 'webhook', 'license', 'log' ];
+		$valid_tabs = [ 'general', 'email', 'confirmation', 'rate-limits', 'overrides', 'webhook', 'license', 'log' ];
 
 		if ( ! in_array( $tab, $valid_tabs, true ) ) {
 			$tab = 'general';

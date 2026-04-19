@@ -81,7 +81,10 @@ class SendToMP_Pipeline {
 
 		$submission->target_member_id = $submission->resolved_member['id'];
 
-		// 6. Direct send path — skip confirmation, send directly to MP.
+		// 6. Apply local address overrides (local > global > API).
+		$submission->resolved_member = SendToMP_Overrides::apply( $submission->resolved_member );
+
+		// 7. Direct send path — skip confirmation, send directly to MP.
 		if ( $skip_confirmation ) {
 			$mail_result = ( new SendToMP_Mailer() )->send_to_mp( $submission );
 			if ( is_wp_error( $mail_result ) ) {
@@ -93,13 +96,13 @@ class SendToMP_Pipeline {
 			return true;
 		}
 
-		// 7. Store pending submission and get confirmation token.
+		// 8. Store pending submission and get confirmation token.
 		$token = ( new SendToMP_Confirmation() )->store_pending( $submission, $submission->resolved_member );
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
 
-		// 8. Send confirmation email.
+		// 9. Send confirmation email.
 		$mail_result = ( new SendToMP_Mailer() )->send_confirmation(
 			$submission,
 			$token,
@@ -110,7 +113,7 @@ class SendToMP_Pipeline {
 			return $mail_result;
 		}
 
-		// 9. Log as pending_confirmation.
+		// 10. Log as pending_confirmation.
 		SendToMP_Logger::log( $submission, 'pending_confirmation' );
 
 		return true;
