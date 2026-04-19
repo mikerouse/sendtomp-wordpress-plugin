@@ -1110,22 +1110,22 @@ class SendToMP_Settings {
 			wp_send_json_error( [ 'message' => __( 'API is not configured.', 'sendtomp' ) ] );
 		}
 
-		$tier     = SendToMP_License::get_tier();
-		$is_free  = SendToMP_License::TIER_PRO !== $tier;
+		$tier             = SendToMP_License::get_tier();
+		$requires_payment = SendToMP_License::TIER_PRO !== $tier;
 
-		// Submit enquiry to Bluetorch API.
+		// Submit enquiry to Bluetorch API (uses same base URL as middleware).
 		$response = wp_remote_post( untrailingslashit( $api_url ) . '/brevo/enquiry', [
 			'timeout' => 15,
 			'headers' => [ 'Content-Type' => 'application/json' ],
 			'body'    => wp_json_encode( [
-				'first_name'   => $first_name,
-				'last_name'    => $last_name,
-				'company_name' => $company_name,
-				'website'      => $website,
-				'email'        => $email,
-				'site_url'     => home_url(),
-				'tier'         => $tier,
-				'requires_payment' => $is_free,
+				'first_name'       => $first_name,
+				'last_name'        => $last_name,
+				'company_name'     => $company_name,
+				'website'          => $website,
+				'email'            => $email,
+				'site_url'         => home_url(),
+				'tier'             => $tier,
+				'requires_payment' => $requires_payment,
 			] ),
 		] );
 
@@ -1136,14 +1136,22 @@ class SendToMP_Settings {
 		$code = wp_remote_retrieve_response_code( $response );
 
 		if ( $code < 200 || $code >= 300 ) {
-			wp_send_json_error( [ 'message' => __( 'Enquiry submission failed. Please try again later.', 'sendtomp' ) ] );
+			$error_message = __( 'Enquiry submission failed. Please try again later.', 'sendtomp' );
+			$body          = wp_remote_retrieve_body( $response );
+			$decoded_body  = json_decode( $body, true );
+
+			if ( is_array( $decoded_body ) && ! empty( $decoded_body['message'] ) && is_string( $decoded_body['message'] ) ) {
+				$error_message = sanitize_text_field( $decoded_body['message'] );
+			}
+
+			wp_send_json_error( [ 'message' => $error_message ] );
 		}
 
 		wp_send_json_success( [
-			'message'          => $is_free
+			'message'          => $requires_payment
 				? __( 'Thanks! We\'ll be in touch to set up your Brevo account. The one-off setup fee of £150 will be invoiced separately.', 'sendtomp' )
 				: __( 'Thanks! As a Pro subscriber, this service is included at no extra cost. We\'ll be in touch to set up your Brevo account.', 'sendtomp' ),
-			'requires_payment' => $is_free,
+			'requires_payment' => $requires_payment,
 		] );
 	}
 

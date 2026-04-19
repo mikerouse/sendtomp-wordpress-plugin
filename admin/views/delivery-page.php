@@ -87,15 +87,15 @@ $is_pro      = SendToMP_License::TIER_PRO === $tier;
 	<table class="form-table" role="presentation">
 		<tr>
 			<th scope="row"><label for="sendtomp-brevo-first-name"><?php esc_html_e( 'First Name', 'sendtomp' ); ?> <span style="color: #d63638;">*</span></label></th>
-			<td><input type="text" id="sendtomp-brevo-first-name" class="regular-text" required /></td>
+			<td><input type="text" id="sendtomp-brevo-first-name" class="regular-text" /></td>
 		</tr>
 		<tr>
 			<th scope="row"><label for="sendtomp-brevo-last-name"><?php esc_html_e( 'Last Name', 'sendtomp' ); ?> <span style="color: #d63638;">*</span></label></th>
-			<td><input type="text" id="sendtomp-brevo-last-name" class="regular-text" required /></td>
+			<td><input type="text" id="sendtomp-brevo-last-name" class="regular-text" /></td>
 		</tr>
 		<tr>
 			<th scope="row"><label for="sendtomp-brevo-email"><?php esc_html_e( 'Email Address', 'sendtomp' ); ?> <span style="color: #d63638;">*</span></label></th>
-			<td><input type="email" id="sendtomp-brevo-email" class="regular-text" required /></td>
+			<td><input type="email" id="sendtomp-brevo-email" class="regular-text" /></td>
 		</tr>
 		<tr>
 			<th scope="row"><label for="sendtomp-brevo-company"><?php esc_html_e( 'Company / Organisation', 'sendtomp' ); ?></label></th>
