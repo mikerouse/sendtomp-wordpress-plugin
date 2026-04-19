@@ -137,7 +137,9 @@ class SendToMP_Admin {
 		if ( empty( $api_url ) ) {
 			echo '<div class="notice notice-warning is-dismissible">';
 			echo '<p><strong>' . esc_html__( 'SendToMP:', 'sendtomp' ) . '</strong> ';
-			echo esc_html__( 'The middleware API URL is not configured. Please set it in the General settings tab to enable MP lookups.', 'sendtomp' );
+			echo esc_html__( 'The API connection is not configured yet. Go to Settings → General and enter your API URL and Key — these were provided when you purchased your licence, or you can find them at', 'sendtomp' );
+			echo ' <a href="' . esc_url( 'https://bluetorch.co.uk/sendtomp/portal' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'bluetorch.co.uk/sendtomp/portal', 'sendtomp' ) . '</a>. ';
+			echo esc_html__( 'Without this, SendToMP cannot look up MPs by postcode.', 'sendtomp' );
 			echo '</p></div>';
 		}
 
