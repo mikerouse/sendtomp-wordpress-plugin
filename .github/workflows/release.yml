@@ -20,11 +20,21 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
-      - name: Verify version matches plugin header
+      - name: Verify version matches plugin header and constant
         run: |
-          PLUGIN_VERSION=$(grep -oP "Version:\s+\K[0-9.]+" sendtomp.php)
-          if [ "$PLUGIN_VERSION" != "${{ steps.version.outputs.version }}" ]; then
-            echo "ERROR: Tag version (${{ steps.version.outputs.version }}) does not match plugin header version ($PLUGIN_VERSION)"
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          HEADER_VERSION=$(grep -oP "Version:\s+\K[0-9.]+" sendtomp.php)
+          CONSTANT_VERSION=$(grep -oP "SENDTOMP_VERSION',\s*'\K[0-9.]+" sendtomp.php)
+
+          echo "Tag: ${TAG_VERSION}, Header: ${HEADER_VERSION}, Constant: ${CONSTANT_VERSION}"
+
+          if [ "$HEADER_VERSION" != "$TAG_VERSION" ]; then
+            echo "ERROR: Tag (${TAG_VERSION}) does not match plugin header (${HEADER_VERSION})"
+            exit 1
+          fi
+
+          if [ "$CONSTANT_VERSION" != "$TAG_VERSION" ]; then
+            echo "ERROR: Tag (${TAG_VERSION}) does not match SENDTOMP_VERSION constant (${CONSTANT_VERSION})"
             exit 1
           fi
 
@@ -83,7 +93,6 @@ jobs:
 
       - name: Register release in Bluetorch API
         if: vars.BLUETORCH_API_URL != ''
-        continue-on-error: true
         env:
           API_URL: ${{ vars.BLUETORCH_API_URL }}
           API_KEY: ${{ secrets.BLUETORCH_RELEASE_KEY }}
@@ -91,7 +100,8 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/sendtomp-${VERSION}.zip"
 
-          curl -sL -X POST "${API_URL}/api/releases/register" \
+          HTTP_CODE=$(curl -sL -o /tmp/response.json -w "%{http_code}" \
+            -X POST "${API_URL}/api/releases/register" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${API_KEY}" \
             -d "{
@@ -101,4 +111,11 @@ jobs:
               \"changelog\": \"See release notes at https://github.com/${{ github.repository }}/releases/tag/v${VERSION}\",
               \"requires_wp\": \"6.0\",
               \"tested_wp\": \"6.7\"
-            }"
+            }")
+
+          echo "HTTP ${HTTP_CODE}: $(cat /tmp/response.json)"
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "ERROR: Release registration failed with HTTP ${HTTP_CODE}"
+            exit 1
+          fi
