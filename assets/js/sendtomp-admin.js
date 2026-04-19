@@ -205,5 +205,50 @@
 			});
 		});
 
+		// GDPR data erasure handler.
+		$('#sendtomp-erase-data').on('click', function (e) {
+			e.preventDefault();
+
+			var $button = $(this);
+			var $result = $('#sendtomp-erase-result');
+			var email = $('#sendtomp-erase-email').val();
+
+			if (!email) {
+				$result.text('Please enter an email address.').css('color', '#d63638');
+				return;
+			}
+
+			if (!confirm('Permanently delete all data for ' + email + '? This cannot be undone.')) {
+				return;
+			}
+
+			$button.prop('disabled', true);
+			$result.text('Erasing...').css('color', '');
+
+			$.ajax({
+				url: sendtomp_admin.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'sendtomp_erase_data',
+					nonce: sendtomp_admin.nonce,
+					email: email
+				},
+				success: function (response) {
+					if (response.success) {
+						$result.text(response.data.message).css('color', '#00a32a');
+						$('#sendtomp-erase-email').val('');
+					} else {
+						$result.text(response.data.message || 'Failed.').css('color', '#d63638');
+					}
+				},
+				error: function () {
+					$result.text('Request failed.').css('color', '#d63638');
+				},
+				complete: function () {
+					$button.prop('disabled', false);
+				}
+			});
+		});
+
 	});
 })(jQuery);

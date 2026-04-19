@@ -386,6 +386,25 @@ class SendToMP_Confirmation {
 	}
 
 	/**
+	 * Purge all pending submissions for a given email address (GDPR erasure).
+	 *
+	 * @param string $email The email address to purge.
+	 * @return int Number of rows deleted.
+	 */
+	public static function purge_by_email( string $email ): int {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'sendtomp_pending';
+
+		return (int) $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$table} WHERE constituent_email = %s",
+				$email
+			)
+		);
+	}
+
+	/**
 	 * Render the confirmation page.
 	 *
 	 * Shows the message preview, MP details, consent text, and a Confirm & Send form.

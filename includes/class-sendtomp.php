@@ -47,6 +47,8 @@ class SendToMP {
 
 		if ( is_admin() ) {
 			new SendToMP_Admin();
+		} else {
+			add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ] );
 		}
 	}
 
@@ -166,6 +168,26 @@ class SendToMP {
 		return SendToMP_License::can( $feature );
 	}
 
+	/**
+	 * Enqueue frontend assets for postcode lookup.
+	 *
+	 * @return void
+	 */
+	public function enqueue_frontend_assets(): void {
+		wp_enqueue_script(
+			'sendtomp-postcode-lookup',
+			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-postcode-lookup.js',
+			[ 'jquery' ],
+			SENDTOMP_VERSION,
+			true
+		);
+
+		wp_localize_script( 'sendtomp-postcode-lookup', 'sendtomp_frontend', [
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'sendtomp_postcode_lookup' ),
+		] );
+	}
+
 	public static function activate() {
 		SendToMP_Confirmation::create_table();
 		SendToMP_Logger::create_table();
@@ -183,6 +205,8 @@ class SendToMP {
 	}
 
 	public static function deactivate() {
-		// Cleanup tasks on deactivation.
+		wp_clear_scheduled_hook( 'sendtomp_cleanup_pending' );
+		wp_clear_scheduled_hook( 'sendtomp_purge_old_logs' );
+		wp_clear_scheduled_hook( 'sendtomp_license_check' );
 	}
 }
