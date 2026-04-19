@@ -204,13 +204,6 @@ class SendToMP_License {
 	public static function activate( string $key ): array {
 		$api_url = self::get_api_url();
 
-		if ( empty( $api_url ) ) {
-			return [
-				'valid'   => false,
-				'message' => __( 'API URL is not configured. Go to Settings → General to set it.', 'sendtomp' ),
-			];
-		}
-
 		$response = wp_remote_post( $api_url . '/license/activate', [
 			'timeout' => 15,
 			'headers' => [ 'Content-Type' => 'application/json' ],
@@ -323,10 +316,6 @@ class SendToMP_License {
 
 		$api_url = self::get_api_url();
 
-		if ( empty( $api_url ) ) {
-			return;
-		}
-
 		$response = wp_remote_post( $api_url . '/license/check', [
 			'timeout' => 15,
 			'headers' => [ 'Content-Type' => 'application/json' ],
@@ -369,7 +358,7 @@ class SendToMP_License {
 	 * @return string
 	 */
 	private static function get_api_url(): string {
-		return untrailingslashit( (string) sendtomp()->get_setting( 'api_url' ) );
+		return untrailingslashit( SENDTOMP_API_BASE ) . '/api';
 	}
 
 	/**

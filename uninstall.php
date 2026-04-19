@@ -34,13 +34,12 @@ $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}sendtomp_log" );
 wp_clear_scheduled_hook( 'sendtomp_cleanup_pending' );
 wp_clear_scheduled_hook( 'sendtomp_purge_old_logs' );
 wp_clear_scheduled_hook( 'sendtomp_license_check' );
-if ( ! empty( $settings['api_url'] ) && ! empty( $settings['license_key'] ) && ! empty( $settings['api_key'] ) ) {
+if ( ! empty( $settings['license_key'] ) ) {
 	wp_remote_post(
-		rtrim( $settings['api_url'], '/' ) . '/license/deactivate',
+		'https://www.bluetorch.co.uk/api/license/deactivate',
 		[
 			'headers' => [
-				'Content-Type'  => 'application/json',
-				'Authorization' => 'Bearer ' . $settings['api_key'],
+				'Content-Type' => 'application/json',
 			],
 			'body'     => wp_json_encode( [
 				'license_key' => $settings['license_key'],

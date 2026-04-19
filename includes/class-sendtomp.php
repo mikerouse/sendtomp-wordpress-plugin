@@ -116,8 +116,6 @@ class SendToMP {
 		}
 
 		$defaults = array(
-			'api_url'             => '',
-			'api_key'             => '',
 			'from_email'          => get_option( 'admin_email' ),
 			'from_name'           => get_bloginfo( 'name' ),
 			'reply_to'            => 'constituent',

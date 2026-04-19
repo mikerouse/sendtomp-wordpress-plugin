@@ -10,11 +10,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 class SendToMP_API_Client {
 
 	private string $api_url;
-	private string $api_key;
+	private string $auth_key;
 
 	public function __construct() {
-		$this->api_url = untrailingslashit( (string) sendtomp()->get_setting( 'api_url' ) );
-		$this->api_key = (string) sendtomp()->get_setting( 'api_key' );
+		$this->api_url  = untrailingslashit( SENDTOMP_API_BASE ) . '/api';
+		$this->auth_key = (string) sendtomp()->get_setting( 'license_key' );
 	}
 
 	public function resolve_member( string $postcode, string $house = 'commons' ) {
@@ -56,7 +56,7 @@ class SendToMP_API_Client {
 			'timeout' => $blocking ? 15 : 1,
 			'headers' => [
 				'Content-Type'  => 'application/json',
-				'Authorization' => 'Bearer ' . $this->api_key,
+				'Authorization' => 'Bearer ' . $this->auth_key,
 			],
 			'body'     => wp_json_encode( $body ),
 			'blocking' => $blocking,
