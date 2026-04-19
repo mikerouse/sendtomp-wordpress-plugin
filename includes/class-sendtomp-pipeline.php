@@ -46,7 +46,19 @@ class SendToMP_Pipeline {
 			return $rate_check;
 		}
 
-		// 4. Resolve the member via the middleware API.
+		// 4. Free tier monthly limit check.
+		if ( ! SendToMP_License::check_monthly_limit() ) {
+			return new WP_Error(
+				'monthly_limit_reached',
+				sprintf(
+					/* translators: %d: message limit */
+					__( 'You have reached the monthly limit of %d messages on the Free plan. Upgrade to Plus for unlimited messages.', 'sendtomp' ),
+					SendToMP_License::FREE_MONTHLY_LIMIT
+				)
+			);
+		}
+
+		// 5. Resolve the member via the middleware API.
 		$api_client = new SendToMP_API_Client();
 
 		if ( 'lords' === $submission->target_house && $submission->target_member_id > 0 ) {
@@ -64,7 +76,7 @@ class SendToMP_Pipeline {
 			return $api_response;
 		}
 
-		// 5. Build resolved_member by merging member + delivery into a flat array.
+		// 6. Build resolved_member by merging member + delivery into a flat array.
 		$member   = isset( $api_response['member'] ) ? $api_response['member'] : [];
 		$delivery = isset( $api_response['delivery'] ) ? $api_response['delivery'] : [];
 
@@ -81,10 +93,10 @@ class SendToMP_Pipeline {
 
 		$submission->target_member_id = $submission->resolved_member['id'];
 
-		// 6. Apply local address overrides (local > global > API).
+		// 7. Apply local address overrides (local > global > API).
 		$submission->resolved_member = SendToMP_Overrides::apply( $submission->resolved_member );
 
-		// 7. Direct send path — skip confirmation, send directly to MP.
+		// 8. Direct send path — skip confirmation, send directly to MP.
 		if ( $skip_confirmation ) {
 			$mail_result = ( new SendToMP_Mailer() )->send_to_mp( $submission );
 			if ( is_wp_error( $mail_result ) ) {
@@ -92,17 +104,18 @@ class SendToMP_Pipeline {
 			}
 
 			SendToMP_Logger::log( $submission, 'confirmed_and_sent' );
+			SendToMP_License::increment_counter();
 
 			return true;
 		}
 
-		// 8. Store pending submission and get confirmation token.
+		// 9. Store pending submission and get confirmation token.
 		$token = ( new SendToMP_Confirmation() )->store_pending( $submission, $submission->resolved_member );
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
 
-		// 9. Send confirmation email.
+		// 10. Send confirmation email.
 		$mail_result = ( new SendToMP_Mailer() )->send_confirmation(
 			$submission,
 			$token,
@@ -113,8 +126,9 @@ class SendToMP_Pipeline {
 			return $mail_result;
 		}
 
-		// 10. Log as pending_confirmation.
+		// 11. Log as pending_confirmation.
 		SendToMP_Logger::log( $submission, 'pending_confirmation' );
+		SendToMP_License::increment_counter();
 
 		return true;
 	}

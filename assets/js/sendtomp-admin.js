@@ -126,5 +126,84 @@
 			});
 		});
 
+		// License activation handler.
+		$('#sendtomp-activate-license').on('click', function (e) {
+			e.preventDefault();
+
+			var $button = $(this);
+			var $result = $('#sendtomp-license-result');
+			var key = $('#license_key').val();
+
+			if (!key) {
+				$result.text('Please enter a license key.').css('color', '#d63638');
+				return;
+			}
+
+			$button.prop('disabled', true);
+			$result.text('Activating...').css('color', '');
+
+			$.ajax({
+				url: sendtomp_admin.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'sendtomp_activate_license',
+					nonce: sendtomp_admin.nonce,
+					license_key: key
+				},
+				success: function (response) {
+					if (response.success) {
+						$result.text(response.data.message).css('color', '#00a32a');
+						setTimeout(function () { location.reload(); }, 1500);
+					} else {
+						$result.text(response.data.message || 'Activation failed.').css('color', '#d63638');
+					}
+				},
+				error: function () {
+					$result.text('Request failed. Please try again.').css('color', '#d63638');
+				},
+				complete: function () {
+					$button.prop('disabled', false);
+				}
+			});
+		});
+
+		// License deactivation handler.
+		$('#sendtomp-deactivate-license').on('click', function (e) {
+			e.preventDefault();
+
+			if (!confirm('Deactivate your license? You will revert to the Free plan.')) {
+				return;
+			}
+
+			var $button = $(this);
+			var $result = $('#sendtomp-license-result');
+
+			$button.prop('disabled', true);
+			$result.text('Deactivating...').css('color', '');
+
+			$.ajax({
+				url: sendtomp_admin.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'sendtomp_deactivate_license',
+					nonce: sendtomp_admin.nonce
+				},
+				success: function (response) {
+					if (response.success) {
+						$result.text(response.data.message).css('color', '#00a32a');
+						setTimeout(function () { location.reload(); }, 1500);
+					} else {
+						$result.text(response.data.message || 'Deactivation failed.').css('color', '#d63638');
+					}
+				},
+				error: function () {
+					$result.text('Request failed. Please try again.').css('color', '#d63638');
+				},
+				complete: function () {
+					$button.prop('disabled', false);
+				}
+			});
+		});
+
 	});
 })(jQuery);

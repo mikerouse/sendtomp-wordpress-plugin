@@ -23,6 +23,8 @@ class SendToMP_Settings {
 		add_action( 'wp_ajax_sendtomp_purge_logs', [ $this, 'handle_purge_logs' ] );
 		add_action( 'wp_ajax_sendtomp_generate_webhook_key', [ $this, 'handle_generate_webhook_key' ] );
 		add_action( 'wp_ajax_sendtomp_search_members', [ $this, 'handle_search_members' ] );
+		add_action( 'wp_ajax_sendtomp_activate_license', [ $this, 'handle_activate_license' ] );
+		add_action( 'wp_ajax_sendtomp_deactivate_license', [ $this, 'handle_deactivate_license' ] );
 		add_action( 'wp_ajax_sendtomp_save_override', [ $this, 'handle_save_override' ] );
 		add_action( 'wp_ajax_sendtomp_delete_override', [ $this, 'handle_delete_override' ] );
 	}
@@ -704,6 +706,54 @@ class SendToMP_Settings {
 	}
 
 	/**
+	 * AJAX handler — activate a license key.
+	 *
+	 * @return void
+	 */
+	public function handle_activate_license(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$key = isset( $_POST['license_key'] ) ? sanitize_text_field( wp_unslash( $_POST['license_key'] ) ) : '';
+
+		if ( empty( $key ) ) {
+			wp_send_json_error( [ 'message' => __( 'Please enter a license key.', 'sendtomp' ) ] );
+		}
+
+		$result = SendToMP_License::activate( $key );
+
+		if ( $result['valid'] ) {
+			wp_send_json_success( $result );
+		} else {
+			wp_send_json_error( $result );
+		}
+	}
+
+	/**
+	 * AJAX handler — deactivate the current license.
+	 *
+	 * @return void
+	 */
+	public function handle_deactivate_license(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$result = SendToMP_License::deactivate();
+
+		if ( $result['success'] ) {
+			wp_send_json_success( $result );
+		} else {
+			wp_send_json_error( $result );
+		}
+	}
+
+	/**
 	 * AJAX handler — save a local address override.
 	 *
 	 * @return void
@@ -929,13 +979,45 @@ class SendToMP_Settings {
 	 * @return void
 	 */
 	public function render_license_status(): void {
-		echo '<p class="description">' . esc_html__( 'License activation will be available in a future release.', 'sendtomp' ) . '</p>';
-		echo '<button type="button" class="button button-secondary" disabled>';
-		echo esc_html__( 'Activate License', 'sendtomp' );
-		echo '</button> ';
-		echo '<button type="button" class="button button-secondary" disabled>';
-		echo esc_html__( 'Deactivate License', 'sendtomp' );
-		echo '</button>';
+		$status = SendToMP_License::get_cached_status();
+		$tier   = SendToMP_License::get_tier();
+		$key    = sendtomp()->get_setting( 'license_key' );
+
+		if ( ! empty( $key ) && $status && ! empty( $status['valid'] ) ) {
+			$tier_label = ucfirst( $tier );
+			$expires    = ! empty( $status['expires_at'] ) ? $status['expires_at'] : __( 'Never', 'sendtomp' );
+			$checked    = ! empty( $status['checked_at'] ) ? $status['checked_at'] : '—';
+
+			echo '<div style="background: #f0faf0; border: 1px solid #00a32a; border-radius: 4px; padding: 12px 16px; margin-bottom: 12px;">';
+			echo '<strong style="color: #00a32a;">&#10003; ' . esc_html( sprintf( __( 'Active — %s Plan', 'sendtomp' ), $tier_label ) ) . '</strong>';
+			echo '<br><small>' . esc_html__( 'Expires:', 'sendtomp' ) . ' ' . esc_html( $expires ) . '</small>';
+			echo '<br><small>' . esc_html__( 'Last checked:', 'sendtomp' ) . ' ' . esc_html( $checked ) . '</small>';
+			echo '</div>';
+
+			echo '<button type="button" id="sendtomp-deactivate-license" class="button button-secondary">';
+			echo esc_html__( 'Deactivate License', 'sendtomp' );
+			echo '</button>';
+			echo '<span id="sendtomp-license-result" style="margin-left: 10px;"></span>';
+		} else {
+			$remaining     = SendToMP_License::get_remaining();
+			$monthly_limit = SendToMP_License::FREE_MONTHLY_LIMIT;
+
+			echo '<div style="background: #f0f0f1; border: 1px solid #c3c4c7; border-radius: 4px; padding: 12px 16px; margin-bottom: 12px;">';
+			echo '<strong>' . esc_html__( 'Free Plan', 'sendtomp' ) . '</strong>';
+			echo '<br><small>' . esc_html( sprintf(
+				/* translators: 1: remaining messages, 2: total monthly limit */
+				__( '%1$d of %2$d messages remaining this month', 'sendtomp' ),
+				$remaining,
+				$monthly_limit
+			) ) . '</small>';
+			echo '</div>';
+
+			echo '<button type="button" id="sendtomp-activate-license" class="button button-primary">';
+			echo esc_html__( 'Activate License', 'sendtomp' );
+			echo '</button>';
+			echo '<span id="sendtomp-license-result" style="margin-left: 10px;"></span>';
+			echo '<p class="description">' . esc_html__( 'Enter your license key above and click Activate to unlock Plus or Pro features.', 'sendtomp' ) . '</p>';
+		}
 	}
 
 	/**

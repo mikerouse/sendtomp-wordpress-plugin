@@ -324,7 +324,8 @@ class SendToMP_Webhook_Adapter extends SendToMP_Form_Adapter_Abstract {
 			'invalid_postcode'   => 422,
 			'missing_message'    => 422,
 			'invalid_house'      => 422,
-			'missing_member_id'  => 422,
+			'missing_member_id'     => 422,
+			'monthly_limit_reached' => 429,
 
 			// Rate limits → 429.
 			'rate_limit_email'    => 429,
