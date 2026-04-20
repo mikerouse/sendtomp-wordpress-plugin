@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.7
+Stable tag: 1.4.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,13 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Changelog ==
 
+= 1.4.8 =
+* Replace the TinyMCE WYSIWYG with a Markdown editor for the Gravity Forms Message Body — more reliable, cleaner to save, visible syntax, no external library dependencies
+* New toolbar with Bold, Italic, Link, Bulleted List, Numbered List, Quote, and Heading buttons that insert Markdown syntax at the cursor position
+* Merge tag picker is now built into the editor toolbar
+* Collapsible "Formatting guide" below the editor explains the Markdown syntax
+* Markdown is automatically converted to HTML when the email is delivered to the MP — bold, italic, lists, links, blockquotes, and headings all render correctly
+
 = 1.4.7 =
 * Fix Message Body not saving in the Gravity Forms feed — the custom visual_editor field type was not being persisted by Gravity Forms. Message Body is now a standard textarea (so GF handles save, load, and validation natively) that is upgraded to a TinyMCE editor client-side via wp.editor.initialize().
 * Merge tag picker is now rendered by a small JavaScript file (sendtomp-gf-rich-editor.js) that also handles cursor-position insertion into TinyMCE or the raw textarea when in Code mode.
@@ -188,6 +195,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.4.8 =
+Message Body is now a Markdown editor with a formatting toolbar and cheatsheet — more reliable than the previous WYSIWYG.
 
 = 1.4.7 =
 Fixes Message Body not saving in the Gravity Forms feed.

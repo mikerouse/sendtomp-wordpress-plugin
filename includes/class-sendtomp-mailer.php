@@ -53,12 +53,19 @@ class SendToMP_Mailer {
 
 		$to = $submission->resolved_member['delivery_email'];
 
-		// If the body contains HTML tags (e.g. from the feed's WYSIWYG
-		// template), send as HTML — otherwise keep plain text for maximum
-		// deliverability and readability in the MP's inbox.
-		if ( $this->body_contains_html( $body ) ) {
+		// Detect whether the body has Markdown formatting or existing
+		// HTML tags. In either case, render as HTML email; otherwise
+		// keep plain text for maximum deliverability.
+		$has_markdown = $this->body_has_markdown_formatting( $body );
+		$has_html     = $this->body_contains_html( $body );
+
+		if ( $has_markdown || $has_html ) {
 			$headers[] = 'Content-Type: text/html; charset=UTF-8';
-			$body      = wpautop( $body );
+			if ( $has_markdown ) {
+				$body = $this->markdown_to_html( $body );
+			} else {
+				$body = wpautop( $body );
+			}
 		}
 
 		$sent = wp_mail( $to, $subject, $body, $headers );
@@ -221,5 +228,137 @@ class SendToMP_Mailer {
 	 */
 	private function body_contains_html( string $content ): bool {
 		return (bool) preg_match( '/<(p|br|div|span|strong|em|b|i|u|ul|ol|li|a|h[1-6]|blockquote)\b[^>]*>/i', $content );
+	}
+
+	/**
+	 * Detect whether a string contains Markdown formatting we convert.
+	 *
+	 * Looks for the syntax the feed toolbar produces: bold (**text**),
+	 * italic (*text*), links ([text](url)), list markers at line start
+	 * ("- ", "1. "), blockquote ("> "), or headings ("## ").
+	 *
+	 * @param string $content Candidate body.
+	 * @return bool
+	 */
+	private function body_has_markdown_formatting( string $content ): bool {
+		$patterns = [
+			'/\*\*[^*\n]+\*\*/',       // **bold**
+			'/(?<!\*)\*[^*\n]+\*(?!\*)/', // *italic* (not part of **)
+			'/\[[^\]]+\]\([^)\s]+\)/', // [link](url)
+			'/(^|\n)\s*-\s+\S/',       // - bullet list
+			'/(^|\n)\s*\d+\.\s+\S/',   // 1. numbered list
+			'/(^|\n)\s*>\s+\S/',       // > blockquote
+			'/(^|\n)#{1,6}\s+\S/',     // # heading
+		];
+		foreach ( $patterns as $pattern ) {
+			if ( preg_match( $pattern, $content ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Convert a small Markdown subset to HTML.
+	 *
+	 * Supports the syntax produced by the Gravity Forms feed editor
+	 * toolbar: bold, italic, links, bulleted/numbered lists,
+	 * blockquotes, and ATX headings. Non-Markdown text is preserved
+	 * and wrapped in paragraphs via wpautop().
+	 *
+	 * This is deliberately a small hand-rolled converter rather than
+	 * a third-party library — keeps the plugin lean and avoids adding
+	 * dependencies for what is a narrow email-template use case.
+	 *
+	 * @param string $markdown Markdown source text.
+	 * @return string HTML output.
+	 */
+	private function markdown_to_html( string $markdown ): string {
+		$lines  = preg_split( '/\r\n|\r|\n/', $markdown );
+		$output = [];
+		$in_ul  = false;
+		$in_ol  = false;
+
+		$close_lists = function () use ( &$in_ul, &$in_ol, &$output ) {
+			if ( $in_ul ) {
+				$output[] = '</ul>';
+				$in_ul    = false;
+			}
+			if ( $in_ol ) {
+				$output[] = '</ol>';
+				$in_ol    = false;
+			}
+		};
+
+		foreach ( $lines as $line ) {
+			$trimmed = ltrim( $line );
+
+			// Bulleted list item.
+			if ( preg_match( '/^-\s+(.+)$/', $trimmed, $m ) ) {
+				if ( $in_ol ) { $output[] = '</ol>'; $in_ol = false; }
+				if ( ! $in_ul ) { $output[] = '<ul>'; $in_ul = true; }
+				$output[] = '<li>' . $this->render_markdown_inline( $m[1] ) . '</li>';
+				continue;
+			}
+
+			// Numbered list item.
+			if ( preg_match( '/^\d+\.\s+(.+)$/', $trimmed, $m ) ) {
+				if ( $in_ul ) { $output[] = '</ul>'; $in_ul = false; }
+				if ( ! $in_ol ) { $output[] = '<ol>'; $in_ol = true; }
+				$output[] = '<li>' . $this->render_markdown_inline( $m[1] ) . '</li>';
+				continue;
+			}
+
+			$close_lists();
+
+			// Heading (## up to ######).
+			if ( preg_match( '/^(#{1,6})\s+(.+)$/', $trimmed, $m ) ) {
+				$level    = strlen( $m[1] );
+				$output[] = '<h' . $level . '>' . $this->render_markdown_inline( $m[2] ) . '</h' . $level . '>';
+				continue;
+			}
+
+			// Blockquote (single line).
+			if ( preg_match( '/^>\s*(.*)$/', $trimmed, $m ) ) {
+				$output[] = '<blockquote>' . $this->render_markdown_inline( $m[1] ) . '</blockquote>';
+				continue;
+			}
+
+			// Regular line — inline format and keep as is; wpautop() later
+			// handles paragraph wrapping.
+			$output[] = $this->render_markdown_inline( $line );
+		}
+
+		$close_lists();
+
+		return wpautop( implode( "\n", $output ) );
+	}
+
+	/**
+	 * Process inline Markdown (bold, italic, link) on a single line.
+	 *
+	 * @param string $text Line of text.
+	 * @return string HTML-encoded line.
+	 */
+	private function render_markdown_inline( string $text ): string {
+		// Escape any HTML first so raw `<` etc don't leak through.
+		$text = esc_html( $text );
+
+		// Links: [text](url)
+		$text = preg_replace_callback(
+			'/\[([^\]]+)\]\(([^)\s]+)\)/',
+			function ( $m ) {
+				return '<a href="' . esc_url( $m[2] ) . '">' . $m[1] . '</a>';
+			},
+			$text
+		);
+
+		// Bold: **text** — run before italic so *...* inside doesn't match first.
+		$text = preg_replace( '/\*\*([^*\n]+)\*\*/', '<strong>$1</strong>', $text );
+
+		// Italic: *text*
+		$text = preg_replace( '/(?<!\*)\*([^*\n]+)\*(?!\*)/', '<em>$1</em>', $text );
+
+		return $text;
 	}
 }
