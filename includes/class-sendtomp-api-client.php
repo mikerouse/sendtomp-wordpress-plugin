@@ -76,7 +76,7 @@ class SendToMP_API_Client {
 
 		if ( $code < 200 || $code >= 300 ) {
 			$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
-			$message = isset( $decoded['message'] ) ? $decoded['message'] : 'API request failed.';
+			$message = isset( $decoded['message'] ) ? $decoded['message'] : __( 'API request failed.', 'sendtomp' );
 
 			return new WP_Error(
 				'sendtomp_api_error',
@@ -90,7 +90,7 @@ class SendToMP_API_Client {
 		if ( null === $decoded ) {
 			return new WP_Error(
 				'sendtomp_invalid_response',
-				'Invalid JSON response from API.'
+				__( 'Invalid JSON response from API.', 'sendtomp' )
 			);
 		}
 

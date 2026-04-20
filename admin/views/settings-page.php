@@ -3,21 +3,21 @@
 <?php
 $current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
 $tabs = array(
-	'general'      => 'General',
-	'email'        => 'Email',
-	'delivery'     => 'Email Delivery',
-	'confirmation' => 'Confirmation',
-	'rate-limits'  => 'Rate Limits',
-	'overrides'    => 'Address Overrides',
-	'webhook'      => 'Webhook API',
-	'license'      => 'License',
-	'log'          => 'Log',
+	'general'      => __( 'General', 'sendtomp' ),
+	'email'        => __( 'Email', 'sendtomp' ),
+	'delivery'     => __( 'Email Delivery', 'sendtomp' ),
+	'confirmation' => __( 'Confirmation', 'sendtomp' ),
+	'rate-limits'  => __( 'Rate Limits', 'sendtomp' ),
+	'overrides'    => __( 'Address Overrides', 'sendtomp' ),
+	'webhook'      => __( 'Webhook API', 'sendtomp' ),
+	'license'      => __( 'License', 'sendtomp' ),
+	'log'          => __( 'Log', 'sendtomp' ),
 );
 ?>
 
 <div class="wrap">
 	<h1>SendToMP <span class="sendtomp-version">v<?php echo esc_html( SENDTOMP_VERSION ); ?></span></h1>
-	<p>Send verified constituent messages to UK Members of Parliament. Built by a former parliamentary assistant.</p>
+	<p><?php esc_html_e( 'Send verified constituent messages to UK Members of Parliament. Built by a former parliamentary assistant.', 'sendtomp' ); ?></p>
 
 	<nav class="nav-tab-wrapper">
 		<?php foreach ($tabs as $slug => $label) : ?>
@@ -41,15 +41,15 @@ $tabs = array(
 				<div class="sendtomp-stats">
 					<div class="sendtomp-stat-card">
 						<div class="stat-value"><?php echo esc_html($total_sent); ?></div>
-						<div class="stat-label">Total Sent</div>
+						<div class="stat-label"><?php esc_html_e( 'Total Sent', 'sendtomp' ); ?></div>
 					</div>
 					<div class="sendtomp-stat-card">
 						<div class="stat-value"><?php echo esc_html($total_confirmed); ?></div>
-						<div class="stat-label">Confirmed</div>
+						<div class="stat-label"><?php esc_html_e( 'Confirmed', 'sendtomp' ); ?></div>
 					</div>
 					<div class="sendtomp-stat-card">
 						<div class="stat-value"><?php echo esc_html(number_format($confirmation_rate, 1)); ?>%</div>
-						<div class="stat-label">Confirmation Rate</div>
+						<div class="stat-label"><?php esc_html_e( 'Confirmation Rate', 'sendtomp' ); ?></div>
 					</div>
 				</div>
 			<?php endif; ?>

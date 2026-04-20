@@ -7,7 +7,9 @@
  * Author: Bluetorch Consulting Ltd
  * Author URI: https://www.bluetorch.co.uk
  * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: sendtomp
+ * Update URI: https://wordpress.org/plugins/sendtomp/
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

@@ -47,31 +47,31 @@ class SendToMP_Submission {
 		$errors = new WP_Error();
 
 		if ( empty( trim( $this->constituent_name ) ) ) {
-			$errors->add( 'missing_name', 'Constituent name is required.' );
+			$errors->add( 'missing_name', __( 'Constituent name is required.', 'sendtomp' ) );
 		}
 
 		if ( ! is_email( $this->constituent_email ) ) {
-			$errors->add( 'invalid_email', 'A valid email address is required.' );
+			$errors->add( 'invalid_email', __( 'A valid email address is required.', 'sendtomp' ) );
 		}
 
 		if ( 'commons' === $this->target_house ) {
 			if ( empty( trim( $this->constituent_postcode ) ) ) {
-				$errors->add( 'missing_postcode', 'Postcode is required.' );
+				$errors->add( 'missing_postcode', __( 'Postcode is required.', 'sendtomp' ) );
 			} elseif ( ! preg_match( '/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i', trim( $this->constituent_postcode ) ) ) {
-				$errors->add( 'invalid_postcode', 'A valid UK postcode is required.' );
+				$errors->add( 'invalid_postcode', __( 'A valid UK postcode is required.', 'sendtomp' ) );
 			}
 		}
 
 		if ( empty( trim( $this->message_body ) ) ) {
-			$errors->add( 'missing_message', 'Message body is required.' );
+			$errors->add( 'missing_message', __( 'Message body is required.', 'sendtomp' ) );
 		}
 
 		if ( ! in_array( $this->target_house, [ 'commons', 'lords' ], true ) ) {
-			$errors->add( 'invalid_house', 'Target house must be commons or lords.' );
+			$errors->add( 'invalid_house', __( 'Target house must be commons or lords.', 'sendtomp' ) );
 		}
 
 		if ( 'lords' === $this->target_house && $this->target_member_id < 1 ) {
-			$errors->add( 'missing_member_id', 'A target Peer must be selected for House of Lords submissions.' );
+			$errors->add( 'missing_member_id', __( 'A target Peer must be selected for House of Lords submissions.', 'sendtomp' ) );
 		}
 
 		if ( $errors->has_errors() ) {

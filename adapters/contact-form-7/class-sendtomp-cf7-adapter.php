@@ -295,18 +295,6 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 				</tr>
 			</table>
 
-			<script>
-			jQuery(function($) {
-				$('#sendtomp-target_house').on('change', function() {
-					if ($(this).val() === 'lords') {
-						$('.sendtomp-lords-only').show();
-					} else {
-						$('.sendtomp-lords-only').hide();
-					}
-				});
-			});
-			</script>
-
 			<h3><?php esc_html_e( 'Field Mapping', 'sendtomp' ); ?></h3>
 			<p><?php esc_html_e( 'Map your form fields to the SendToMP submission fields.', 'sendtomp' ); ?></p>
 
@@ -381,5 +369,13 @@ class SendToMP_CF7_Adapter extends SendToMP_Form_Adapter_Abstract {
 		}
 
 		SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
+
+		wp_enqueue_script(
+			'sendtomp-cf7-editor',
+			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-cf7-editor.js',
+			[ 'jquery' ],
+			SENDTOMP_VERSION,
+			true
+		);
 	}
 }

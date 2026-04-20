@@ -24,37 +24,37 @@ $total_pages = ceil($total_items / $per_page);
 $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 ?>
 
-<h2>SendToMP &mdash; Submission Log</h2>
+<h2><?php echo esc_html__( 'SendToMP', 'sendtomp' ); ?> &mdash; <?php esc_html_e( 'Submission Log', 'sendtomp' ); ?></h2>
 
 <div class="sendtomp-log-filters">
 	<div>
-		<label for="sendtomp-filter-status">Status</label>
+		<label for="sendtomp-filter-status"><?php esc_html_e( 'Status', 'sendtomp' ); ?></label>
 		<select id="sendtomp-filter-status" name="status" form="sendtomp-log-filter-form">
-			<option value="">All Statuses</option>
-			<option value="confirmed" <?php selected($filter_status, 'confirmed'); ?>>Confirmed &amp; Sent</option>
-			<option value="failed" <?php selected($filter_status, 'failed'); ?>>Failed</option>
-			<option value="pending_confirmation" <?php selected($filter_status, 'pending_confirmation'); ?>>Pending Confirmation</option>
-			<option value="rate_limited" <?php selected($filter_status, 'rate_limited'); ?>>Rate Limited</option>
+			<option value=""><?php esc_html_e( 'All Statuses', 'sendtomp' ); ?></option>
+			<option value="confirmed" <?php selected($filter_status, 'confirmed'); ?>><?php esc_html_e( 'Confirmed & Sent', 'sendtomp' ); ?></option>
+			<option value="failed" <?php selected($filter_status, 'failed'); ?>><?php esc_html_e( 'Failed', 'sendtomp' ); ?></option>
+			<option value="pending_confirmation" <?php selected($filter_status, 'pending_confirmation'); ?>><?php esc_html_e( 'Pending Confirmation', 'sendtomp' ); ?></option>
+			<option value="rate_limited" <?php selected($filter_status, 'rate_limited'); ?>><?php esc_html_e( 'Rate Limited', 'sendtomp' ); ?></option>
 		</select>
 	</div>
 
 	<div>
-		<label for="sendtomp-filter-date-from">From</label>
+		<label for="sendtomp-filter-date-from"><?php esc_html_e( 'From', 'sendtomp' ); ?></label>
 		<input type="date" id="sendtomp-filter-date-from" name="date_from"
 		       value="<?php echo esc_attr($filter_from); ?>" form="sendtomp-log-filter-form" />
 	</div>
 
 	<div>
-		<label for="sendtomp-filter-date-to">To</label>
+		<label for="sendtomp-filter-date-to"><?php esc_html_e( 'To', 'sendtomp' ); ?></label>
 		<input type="date" id="sendtomp-filter-date-to" name="date_to"
 		       value="<?php echo esc_attr($filter_to); ?>" form="sendtomp-log-filter-form" />
 	</div>
 
 	<div>
-		<label for="sendtomp-filter-search">Search</label>
+		<label for="sendtomp-filter-search"><?php esc_html_e( 'Search', 'sendtomp' ); ?></label>
 		<input type="text" id="sendtomp-filter-search" name="search"
 		       value="<?php echo esc_attr($filter_search); ?>"
-		       placeholder="Name, postcode, MP..."
+		       placeholder="<?php echo esc_attr__( 'Name, postcode, MP...', 'sendtomp' ); ?>"
 		       form="sendtomp-log-filter-form" />
 	</div>
 
@@ -68,17 +68,17 @@ $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 </div>
 
 <?php if (empty($items)) : ?>
-	<p>No submissions found.</p>
+	<p><?php esc_html_e( 'No submissions found.', 'sendtomp' ); ?></p>
 <?php else : ?>
 	<table class="wp-list-table widefat fixed striped">
 		<thead>
 			<tr>
-				<th scope="col" class="column-date">Date</th>
-				<th scope="col" class="column-constituent">Constituent</th>
-				<th scope="col" class="column-mp">MP / Peer</th>
-				<th scope="col" class="column-house">House</th>
-				<th scope="col" class="column-status">Status</th>
-				<th scope="col" class="column-adapter">Adapter</th>
+				<th scope="col" class="column-date"><?php esc_html_e( 'Date', 'sendtomp' ); ?></th>
+				<th scope="col" class="column-constituent"><?php esc_html_e( 'Constituent', 'sendtomp' ); ?></th>
+				<th scope="col" class="column-mp"><?php esc_html_e( 'MP / Peer', 'sendtomp' ); ?></th>
+				<th scope="col" class="column-house"><?php esc_html_e( 'House', 'sendtomp' ); ?></th>
+				<th scope="col" class="column-status"><?php esc_html_e( 'Status', 'sendtomp' ); ?></th>
+				<th scope="col" class="column-adapter"><?php esc_html_e( 'Adapter', 'sendtomp' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -124,14 +124,17 @@ $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 							   'search'    => $filter_search,
 							   'paged'     => $paged - 1,
 						   ), admin_url('admin.php'))); ?>">
-							&lsaquo; Previous
+							&lsaquo; <?php esc_html_e( 'Previous', 'sendtomp' ); ?>
 						</a>
 					<?php else : ?>
-						<span class="tablenav-pages-navspan button disabled">&lsaquo; Previous</span>
+						<span class="tablenav-pages-navspan button disabled">&lsaquo; <?php esc_html_e( 'Previous', 'sendtomp' ); ?></span>
 					<?php endif; ?>
 
 					<span class="paging-input">
-						<?php echo esc_html($paged); ?> of <?php echo esc_html($total_pages); ?>
+						<?php
+						/* translators: 1: current page number, 2: total number of pages */
+						echo esc_html( sprintf( __( '%1$s of %2$s', 'sendtomp' ), $paged, $total_pages ) );
+						?>
 					</span>
 
 					<?php if ($paged < $total_pages) : ?>
@@ -145,10 +148,10 @@ $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 							   'search'    => $filter_search,
 							   'paged'     => $paged + 1,
 						   ), admin_url('admin.php'))); ?>">
-							Next &rsaquo;
+							<?php esc_html_e( 'Next', 'sendtomp' ); ?> &rsaquo;
 						</a>
 					<?php else : ?>
-						<span class="tablenav-pages-navspan button disabled">Next &rsaquo;</span>
+						<span class="tablenav-pages-navspan button disabled"><?php esc_html_e( 'Next', 'sendtomp' ); ?> &rsaquo;</span>
 					<?php endif; ?>
 				</span>
 			</div>

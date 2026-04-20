@@ -87,7 +87,7 @@ class SendToMP_Confirmation {
 		);
 
 		if ( false === $encrypted_data ) {
-			return new WP_Error( 'encryption_failed', 'Failed to encrypt submission data.' );
+			return new WP_Error( 'encryption_failed', __( 'Failed to encrypt submission data.', 'sendtomp' ) );
 		}
 
 		// Prepend IV to ciphertext so we can extract it on decryption.
@@ -116,7 +116,7 @@ class SendToMP_Confirmation {
 		);
 
 		if ( false === $inserted ) {
-			return new WP_Error( 'db_insert_failed', 'Failed to store pending submission.' );
+			return new WP_Error( 'db_insert_failed', __( 'Failed to store pending submission.', 'sendtomp' ) );
 		}
 
 		return $token;
@@ -139,11 +139,11 @@ class SendToMP_Confirmation {
 		);
 
 		if ( ! $row ) {
-			return new WP_Error( 'invalid_token', 'This confirmation link is not valid.' );
+			return new WP_Error( 'invalid_token', __( 'This confirmation link is not valid.', 'sendtomp' ) );
 		}
 
 		if ( 'confirmed' === $row['status'] ) {
-			return new WP_Error( 'already_confirmed', 'This message has already been confirmed and sent.' );
+			return new WP_Error( 'already_confirmed', __( 'This message has already been confirmed and sent.', 'sendtomp' ) );
 		}
 
 		if ( 'expired' === $row['status'] || $row['expires_at'] < gmdate( 'Y-m-d H:i:s' ) ) {
@@ -157,7 +157,7 @@ class SendToMP_Confirmation {
 					[ '%d' ]
 				);
 			}
-			return new WP_Error( 'token_expired', 'This confirmation link has expired. Please submit the form again.' );
+			return new WP_Error( 'token_expired', __( 'This confirmation link has expired. Please submit the form again.', 'sendtomp' ) );
 		}
 
 		$decrypted = $this->decrypt_row( $row );
@@ -191,7 +191,7 @@ class SendToMP_Confirmation {
 		) );
 
 		if ( 0 === (int) $updated ) {
-			return new WP_Error( 'already_confirmed', 'This message has already been confirmed and sent.' );
+			return new WP_Error( 'already_confirmed', __( 'This message has already been confirmed and sent.', 'sendtomp' ) );
 		}
 
 		// Retrieve the row to get submission data.
@@ -201,7 +201,7 @@ class SendToMP_Confirmation {
 		);
 
 		if ( ! $row ) {
-			return new WP_Error( 'record_not_found', 'Pending record not found after update.' );
+			return new WP_Error( 'record_not_found', __( 'Pending record not found after update.', 'sendtomp' ) );
 		}
 
 		$decrypted = $this->decrypt_row( $row );
@@ -263,23 +263,23 @@ class SendToMP_Confirmation {
 		$encryption_key = wp_salt( 'auth' );
 		$parts          = explode( ':', $row['submission_data'], 2 );
 		if ( 2 !== count( $parts ) ) {
-			return new WP_Error( 'invalid_data', 'Submission data format is invalid.' );
+			return new WP_Error( 'invalid_data', __( 'Submission data format is invalid.', 'sendtomp' ) );
 		}
 		$iv        = base64_decode( $parts[0] );
 		$decrypted = openssl_decrypt( $parts[1], 'aes-256-cbc', $encryption_key, 0, $iv );
 
 		if ( false === $decrypted ) {
-			return new WP_Error( 'decryption_failed', 'Failed to decrypt submission data.' );
+			return new WP_Error( 'decryption_failed', __( 'Failed to decrypt submission data.', 'sendtomp' ) );
 		}
 
 		$submission_data = json_decode( $decrypted, true );
 		if ( null === $submission_data ) {
-			return new WP_Error( 'invalid_data', 'Submission data is corrupt.' );
+			return new WP_Error( 'invalid_data', __( 'Submission data is corrupt.', 'sendtomp' ) );
 		}
 
 		$resolved_member = json_decode( $row['resolved_member'], true );
 		if ( null === $resolved_member ) {
-			return new WP_Error( 'invalid_member', 'Resolved member data is corrupt.' );
+			return new WP_Error( 'invalid_member', __( 'Resolved member data is corrupt.', 'sendtomp' ) );
 		}
 
 		return [
@@ -335,14 +335,14 @@ class SendToMP_Confirmation {
 	private function process_confirmation_post( string $token ): void {
 		// Verify the nonce.
 		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'sendtomp_confirm_' . $token ) ) {
-			$this->render_error_page( 'Security check failed. Please go back and try again.' );
+			$this->render_error_page( __( 'Security check failed. Please go back and try again.', 'sendtomp' ) );
 			exit;
 		}
 
 		// Validate the token from POST matches the URL.
 		$post_token = isset( $_POST['sendtomp_token'] ) ? sanitize_text_field( wp_unslash( $_POST['sendtomp_token'] ) ) : '';
 		if ( $post_token !== $token ) {
-			$this->render_error_page( 'Token mismatch. Please go back and try again.' );
+			$this->render_error_page( __( 'Token mismatch. Please go back and try again.', 'sendtomp' ) );
 			exit;
 		}
 
@@ -437,7 +437,7 @@ class SendToMP_Confirmation {
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title><?php echo esc_html( sprintf( 'Confirm your message to %s', $mp_name ) ); ?> &mdash; <?php echo $site_name; ?></title>
+	<title><?php echo esc_html( sprintf( __( 'Confirm your message to %s', 'sendtomp' ), $mp_name ) ); ?> &mdash; <?php echo esc_html( $site_name ); ?></title>
 	<?php wp_head(); ?>
 	<style>
 		body.sendtomp-confirmation {
@@ -539,17 +539,17 @@ class SendToMP_Confirmation {
 <body class="sendtomp-confirmation">
 	<div class="sendtomp-wrap">
 		<div class="sendtomp-card">
-			<h1>Confirm your message</h1>
+			<h1><?php esc_html_e( 'Confirm your message', 'sendtomp' ); ?></h1>
 			<p class="subtitle">
-				to <?php echo $mp_name; ?><?php echo $mp_constituency ? ', ' . $mp_constituency : ''; ?>
+				to <?php echo esc_html( $mp_name ); ?><?php echo $mp_constituency ? ', ' . esc_html( $mp_constituency ) : ''; ?>
 			</p>
 
 			<div class="sendtomp-preview">
-				<h3>Your message preview</h3>
+				<h3><?php esc_html_e( 'Your message preview', 'sendtomp' ); ?></h3>
 				<?php if ( $message_subject ) : ?>
-					<div class="subject"><?php echo $message_subject; ?></div>
+					<div class="subject"><?php echo esc_html( $message_subject ); ?></div>
 				<?php endif; ?>
-				<div class="body"><?php echo $message_body; ?></div>
+				<div class="body"><?php echo esc_html( $message_body ); ?></div>
 			</div>
 
 			<?php
@@ -559,26 +559,31 @@ class SendToMP_Confirmation {
 
 			<?php if ( $is_lords && $is_shared ) : ?>
 				<div style="background: #f0f6fc; border: 1px solid #72aee6; border-radius: 4px; padding: 12px 16px; margin: 16px 0; font-size: 0.9em; color: #1d2327;">
-					This message will be sent to the House of Lords general contact address, marked for the attention of <?php echo $mp_name; ?>.
+					<?php echo esc_html( sprintf( __( 'This message will be sent to the House of Lords general contact address, marked for the attention of %s.', 'sendtomp' ), $mp_name ) ); ?>
 				</div>
 			<?php endif; ?>
 
 			<div class="sendtomp-consent">
 				By confirming, you consent to your name, email address<?php echo $is_lords ? '' : ', postcode,'; ?> and message
-				being sent to <?php echo $mp_name; ?><?php echo $mp_constituency ? ', ' . $mp_constituency : ''; ?>.
-				<?php echo $mp_name; ?> may reply to you directly.
+				being sent to <?php echo esc_html( $mp_name ); ?><?php echo $mp_constituency ? ', ' . esc_html( $mp_constituency ) : ''; ?>.
+				<?php echo esc_html( $mp_name ); ?> may reply to you directly.
 			</div>
 
-			<form method="post" action="<?php echo $form_action; ?>" class="sendtomp-actions">
+			<form method="post" action="<?php echo esc_url( $form_action ); ?>" class="sendtomp-actions">
 				<input type="hidden" name="sendtomp_token" value="<?php echo esc_attr( $token ); ?>">
 				<?php wp_nonce_field( $nonce_action ); ?>
-				<button type="submit">Confirm &amp; Send</button>
+				<button type="submit"><?php esc_html_e( 'Confirm & Send', 'sendtomp' ); ?></button>
 			</form>
 		</div>
 
 		<?php if ( $show_branding ) : ?>
 			<div class="sendtomp-footer">
-				Powered by <a href="https://www.bluetorch.co.uk/sendtomp" target="_blank" rel="noopener">Bluetorch's SendToMP</a>
+				<?php
+				printf(
+					esc_html__( 'Powered by %s', 'sendtomp' ),
+					'<a href="https://www.bluetorch.co.uk/sendtomp" target="_blank" rel="noopener">Bluetorch\'s SendToMP</a>'
+				);
+				?>
 			</div>
 		<?php endif; ?>
 	</div>
@@ -627,7 +632,7 @@ class SendToMP_Confirmation {
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title><?php echo esc_html( 'Message sent' ); ?> &mdash; <?php echo $site_name; ?></title>
+	<title><?php echo esc_html__( 'Message sent', 'sendtomp' ); ?> &mdash; <?php echo esc_html( $site_name ); ?></title>
 	<?php wp_head(); ?>
 	<style>
 		body.sendtomp-thankyou {
@@ -726,28 +731,34 @@ class SendToMP_Confirmation {
 	<div class="sendtomp-wrap">
 		<div class="sendtomp-card">
 			<div class="checkmark">&#10003;</div>
-			<h1>Your message has been sent</h1>
+			<h1><?php esc_html_e( 'Your message has been sent', 'sendtomp' ); ?></h1>
 			<p>
-				Your message has been sent to <?php echo $mp_name; ?><?php echo $mp_constituency ? ' (' . $mp_constituency . ')' : ''; ?>.
+				Your message has been sent to <?php echo esc_html( $mp_name ); ?><?php echo $mp_constituency ? ' (' . esc_html( $mp_constituency ) . ')' : ''; ?>.
 			</p>
 
 			<div class="sendtomp-share">
-				<h3>Spread the word</h3>
+				<h3><?php esc_html_e( 'Spread the word', 'sendtomp' ); ?></h3>
 				<div class="sendtomp-share-links">
-					<a href="<?php echo esc_url( $twitter_url ); ?>" target="_blank" rel="noopener">Share on X</a>
-					<a href="<?php echo esc_url( $facebook_url ); ?>" target="_blank" rel="noopener">Share on Facebook</a>
-					<a href="<?php echo esc_url( $email_url ); ?>">Share via Email</a>
+					<a href="<?php echo esc_url( $twitter_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Share on X', 'sendtomp' ); ?></a>
+					<a href="<?php echo esc_url( $facebook_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Share on Facebook', 'sendtomp' ); ?></a>
+					<a href="<?php echo esc_url( $email_url ); ?>"><?php esc_html_e( 'Share via Email', 'sendtomp' ); ?></a>
 				</div>
 			</div>
 
 			<div class="sendtomp-back">
-				<a href="<?php echo $site_url; ?>">&larr; Back to <?php echo $site_name; ?></a>
+				<a href="<?php echo esc_url( $site_url ); ?>">&larr; <?php echo esc_html( sprintf( __( 'Back to %s', 'sendtomp' ), $site_name ) ); ?></a>
 			</div>
 		</div>
 
 		<?php if ( $show_branding ) : ?>
 			<div class="sendtomp-footer">
-				Powered by <a href="https://www.bluetorch.co.uk/sendtomp" target="_blank" rel="noopener">Bluetorch's SendToMP</a>
+				<?php
+				printf(
+					/* translators: %s: link to SendToMP website */
+					esc_html__( 'Powered by %s', 'sendtomp' ),
+					'<a href="https://www.bluetorch.co.uk/sendtomp" target="_blank" rel="noopener">Bluetorch\'s SendToMP</a>'
+				);
+				?>
 			</div>
 		<?php endif; ?>
 	</div>
@@ -776,7 +787,7 @@ class SendToMP_Confirmation {
 	<meta charset="<?php bloginfo( 'charset' ); ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title><?php echo esc_html( 'Confirmation' ); ?> &mdash; <?php echo $site_name; ?></title>
+	<title><?php echo esc_html__( 'Confirmation', 'sendtomp' ); ?> &mdash; <?php echo esc_html( $site_name ); ?></title>
 	<?php wp_head(); ?>
 	<style>
 		body.sendtomp-error {
@@ -826,9 +837,9 @@ class SendToMP_Confirmation {
 	<div class="sendtomp-wrap">
 		<div class="sendtomp-card">
 			<div class="icon">&#10007;</div>
-			<h1>Unable to confirm</h1>
+			<h1><?php esc_html_e( 'Unable to confirm', 'sendtomp' ); ?></h1>
 			<p><?php echo esc_html( $message ); ?></p>
-			<p><a href="<?php echo $site_url; ?>">&larr; Back to <?php echo $site_name; ?></a></p>
+			<p><a href="<?php echo esc_url( $site_url ); ?>">&larr; <?php echo esc_html( sprintf( __( 'Back to %s', 'sendtomp' ), $site_name ) ); ?></a></p>
 		</div>
 	</div>
 	<?php wp_footer(); ?>

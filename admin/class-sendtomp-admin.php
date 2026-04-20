@@ -109,6 +109,29 @@ class SendToMP_Admin {
 		] );
 
 		SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
+
+		// Tab-specific scripts.
+		$current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
+
+		if ( 'delivery' === $current_tab ) {
+			wp_enqueue_script(
+				'sendtomp-delivery',
+				SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-delivery.js',
+				[ 'jquery', 'sendtomp-admin' ],
+				SENDTOMP_VERSION,
+				true
+			);
+		}
+
+		if ( 'overrides' === $current_tab ) {
+			wp_enqueue_script(
+				'sendtomp-overrides',
+				SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-overrides.js',
+				[ 'jquery', 'sendtomp-admin' ],
+				SENDTOMP_VERSION,
+				true
+			);
+		}
 	}
 
 	/**

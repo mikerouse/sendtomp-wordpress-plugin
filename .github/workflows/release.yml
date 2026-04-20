@@ -61,10 +61,8 @@ jobs:
             --exclude='.phpcs*' \
             --exclude='.editorconfig' \
             --exclude='.gitignore' \
+            --exclude='.mcp.json' \
             ./ "build/${SLUG}/"
-
-          # Keep README.md (WordPress needs readme.txt but we'll include README.md too).
-          cp README.md "build/${SLUG}/README.md" 2>/dev/null || true
 
           # Create the ZIP.
           cd build

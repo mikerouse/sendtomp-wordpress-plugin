@@ -79,6 +79,10 @@ class SendToMP_Updater {
 
 		$transient->response[ SENDTOMP_PLUGIN_BASENAME ] = $update;
 
+		// Remove any WordPress.org update for this plugin so the licensed
+		// update takes precedence (prevents dual-update conflicts).
+		unset( $transient->no_update[ SENDTOMP_PLUGIN_BASENAME ] );
+
 		return $transient;
 	}
 

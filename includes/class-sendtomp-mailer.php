@@ -48,7 +48,7 @@ class SendToMP_Mailer {
 		$body .= "\n\n" . $this->get_mp_email_footer( $submission );
 
 		if ( empty( $submission->resolved_member['delivery_email'] ) ) {
-			return new WP_Error( 'no_delivery_email', 'No delivery email address found for this MP.' );
+			return new WP_Error( 'no_delivery_email', __( 'No delivery email address found for this MP.', 'sendtomp' ) );
 		}
 
 		$to = $submission->resolved_member['delivery_email'];
@@ -56,7 +56,7 @@ class SendToMP_Mailer {
 		$sent = wp_mail( $to, $subject, $body, $headers );
 
 		if ( ! $sent ) {
-			return new WP_Error( 'send_failed', 'Your message could not be sent. Please try again later.' );
+			return new WP_Error( 'send_failed', __( 'Your message could not be sent. Please try again later.', 'sendtomp' ) );
 		}
 
 		return true;
@@ -93,7 +93,7 @@ class SendToMP_Mailer {
 		$sent = wp_mail( $to, $subject, $body );
 
 		if ( ! $sent ) {
-			return new WP_Error( 'confirmation_failed', 'We could not send a confirmation email. Please check your email address and try again.' );
+			return new WP_Error( 'confirmation_failed', __( 'We could not send a confirmation email. Please check your email address and try again.', 'sendtomp' ) );
 		}
 
 		return true;
@@ -189,7 +189,7 @@ class SendToMP_Mailer {
 		$sent = wp_mail( $to, $subject, $body );
 
 		if ( ! $sent ) {
-			return new WP_Error( 'test_email_failed', 'The test email could not be sent. Please check your email configuration.' );
+			return new WP_Error( 'test_email_failed', __( 'The test email could not be sent. Please check your email configuration.', 'sendtomp' ) );
 		}
 
 		return true;

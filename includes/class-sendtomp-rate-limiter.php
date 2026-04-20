@@ -8,28 +8,28 @@ class SendToMP_Rate_Limiter {
 
 	public function check( SendToMP_Submission $submission ) {
 		if ( ! empty( $submission->metadata['honeypot'] ) ) {
-			return new WP_Error( 'submission_rejected', 'Your message could not be submitted. Please try again.' );
+			return new WP_Error( 'submission_rejected', __( 'Your message could not be submitted. Please try again.', 'sendtomp' ) );
 		}
 
 		if ( ! $this->check_duplicate( $submission ) ) {
-			return new WP_Error( 'duplicate_submission', 'It looks like you have already sent this message. Please check your email for a confirmation link.' );
+			return new WP_Error( 'duplicate_submission', __( 'It looks like you have already sent this message. Please check your email for a confirmation link.', 'sendtomp' ) );
 		}
 
 		$email_limit = $this->get_limit( 'email' );
 		if ( ! $this->check_rate( 'email', $submission->constituent_email, $email_limit ) ) {
-			return new WP_Error( 'rate_limit_email', 'You have reached the maximum number of messages for today. Please try again tomorrow.' );
+			return new WP_Error( 'rate_limit_email', __( 'You have reached the maximum number of messages for today. Please try again tomorrow.', 'sendtomp' ) );
 		}
 
 		$ip = $this->get_client_ip();
 		$ip_limit = $this->get_limit( 'ip' );
 		if ( ! $this->check_rate( 'ip', $ip, $ip_limit ) ) {
-			return new WP_Error( 'rate_limit_ip', 'Too many messages have been sent from your location today. Please try again tomorrow.' );
+			return new WP_Error( 'rate_limit_ip', __( 'Too many messages have been sent from your location today. Please try again tomorrow.', 'sendtomp' ) );
 		}
 
 		if ( ! empty( $submission->constituent_postcode ) ) {
 			$postcode_limit = $this->get_limit( 'postcode' );
 			if ( ! $this->check_rate( 'postcode', $submission->constituent_postcode, $postcode_limit ) ) {
-				return new WP_Error( 'rate_limit_postcode', 'Too many messages have been sent from your postcode area today. Please try again tomorrow.' );
+				return new WP_Error( 'rate_limit_postcode', __( 'Too many messages have been sent from your postcode area today. Please try again tomorrow.', 'sendtomp' ) );
 			}
 		}
 
@@ -37,13 +37,13 @@ class SendToMP_Rate_Limiter {
 		if ( 'lords' === $submission->target_house && $submission->target_member_id > 0 ) {
 			$member_limit = $this->get_limit( 'postcode' );
 			if ( ! $this->check_rate( 'member', (string) $submission->target_member_id, $member_limit ) ) {
-				return new WP_Error( 'rate_limit_member', 'Too many messages have been sent to this Peer today. Please try again tomorrow.' );
+				return new WP_Error( 'rate_limit_member', __( 'Too many messages have been sent to this Peer today. Please try again tomorrow.', 'sendtomp' ) );
 			}
 		}
 
 		$global_limit = $this->get_limit( 'global' );
 		if ( ! $this->check_rate( 'global', 'site', $global_limit ) ) {
-			return new WP_Error( 'rate_limit_global', 'This service is temporarily at capacity. Please try again later.' );
+			return new WP_Error( 'rate_limit_global', __( 'This service is temporarily at capacity. Please try again later.', 'sendtomp' ) );
 		}
 
 		return true;
