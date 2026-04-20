@@ -452,7 +452,8 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	 * letter to the MP (bold, italics, bullet points, links) without having
 	 * to hand-write HTML. The framework handles the label, tooltip, and
 	 * required marker via single_setting_row; this method renders just the
-	 * input portion.
+	 * input portion plus a merge-tag picker (since TinyMCE hides the
+	 * textarea, the native GF `merge-tag-support` class does not attach).
 	 *
 	 * @param array $field Field definition from feed_settings_fields().
 	 * @return void
@@ -461,6 +462,9 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 		$field_name = (string) rgar( $field, 'name', '' );
 		$value      = (string) $this->get_setting( $field_name );
 		$editor_id  = '_gaddon_setting_' . $field_name;
+		$form       = $this->get_current_form();
+
+		$this->render_merge_tag_picker( $editor_id, $form );
 
 		wp_editor(
 			$value,
@@ -473,5 +477,111 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 				'quicktags'     => true,
 			]
 		);
+	}
+
+	/**
+	 * Render a merge-tag picker dropdown that inserts tokens into the
+	 * TinyMCE editor at the cursor position (or into the textarea when
+	 * TinyMCE is in Text/Code mode).
+	 *
+	 * @param string     $editor_id The target editor / textarea id.
+	 * @param array|null $form      The current form (may be null in edge cases).
+	 * @return void
+	 */
+	private function render_merge_tag_picker( string $editor_id, $form ): void {
+		$form_options = [];
+		if ( is_array( $form ) && ! empty( $form['fields'] ) ) {
+			foreach ( $form['fields'] as $gf_field ) {
+				if ( in_array( $gf_field->type, [ 'html', 'section', 'page', 'captcha' ], true ) ) {
+					continue;
+				}
+
+				$field_label = (string) ( $gf_field->label ?? '' );
+				if ( '' === $field_label ) {
+					continue;
+				}
+
+				$inputs = method_exists( $gf_field, 'get_entry_inputs' ) ? $gf_field->get_entry_inputs() : null;
+
+				if ( is_array( $inputs ) && ! empty( $inputs ) ) {
+					foreach ( $inputs as $input ) {
+						$input_label = (string) rgar( $input, 'label' );
+						$input_id    = (string) rgar( $input, 'id' );
+						if ( '' === $input_label || '' === $input_id ) {
+							continue;
+						}
+						$form_options[] = [
+							'label' => $field_label . ' (' . $input_label . ')',
+							'tag'   => '{' . $field_label . ' (' . $input_label . '):' . $input_id . '}',
+						];
+					}
+				} else {
+					$form_options[] = [
+						'label' => $field_label,
+						'tag'   => '{' . $field_label . ':' . $gf_field->id . '}',
+					];
+				}
+			}
+		}
+
+		$sendtomp_options = [
+			[ 'label' => __( 'MP Name (after postcode lookup)', 'sendtomp' ), 'tag' => '{mp_name}' ],
+			[ 'label' => __( 'MP Constituency', 'sendtomp' ),                 'tag' => '{mp_constituency}' ],
+			[ 'label' => __( 'MP Party', 'sendtomp' ),                        'tag' => '{mp_party}' ],
+			[ 'label' => __( 'MP House (Commons / Lords)', 'sendtomp' ),      'tag' => '{mp_house}' ],
+			[ 'label' => __( 'Constituent Name (mapped)', 'sendtomp' ),       'tag' => '{constituent_name}' ],
+			[ 'label' => __( 'Constituent Postcode (mapped)', 'sendtomp' ),   'tag' => '{constituent_postcode}' ],
+			[ 'label' => __( 'Your site name', 'sendtomp' ),                  'tag' => '{site_name}' ],
+		];
+
+		?>
+		<div class="sendtomp-merge-tag-picker" style="margin-bottom: 8px;">
+			<label style="display:inline-block; margin-right:6px; font-weight:600;">
+				<?php esc_html_e( 'Insert merge tag:', 'sendtomp' ); ?>
+			</label>
+			<select class="sendtomp-insert-merge-tag" data-editor-id="<?php echo esc_attr( $editor_id ); ?>">
+				<option value=""><?php esc_html_e( '— choose —', 'sendtomp' ); ?></option>
+				<?php if ( ! empty( $form_options ) ) : ?>
+					<optgroup label="<?php esc_attr_e( 'Form fields', 'sendtomp' ); ?>">
+						<?php foreach ( $form_options as $opt ) : ?>
+							<option value="<?php echo esc_attr( $opt['tag'] ); ?>"><?php echo esc_html( $opt['label'] ); ?></option>
+						<?php endforeach; ?>
+					</optgroup>
+				<?php endif; ?>
+				<optgroup label="<?php esc_attr_e( 'SendToMP tokens (resolved at send time)', 'sendtomp' ); ?>">
+					<?php foreach ( $sendtomp_options as $opt ) : ?>
+						<option value="<?php echo esc_attr( $opt['tag'] ); ?>"><?php echo esc_html( $opt['label'] ); ?></option>
+					<?php endforeach; ?>
+				</optgroup>
+			</select>
+		</div>
+		<script>
+		( function( $ ) {
+			$( document ).on( 'change', '.sendtomp-insert-merge-tag', function() {
+				var $select  = $( this );
+				var tag      = $select.val();
+				var editorId = $select.data( 'editor-id' );
+				if ( ! tag || ! editorId ) { return; }
+
+				var editor = ( window.tinymce && tinymce.get ) ? tinymce.get( editorId ) : null;
+
+				if ( editor && ! editor.isHidden() ) {
+					editor.execCommand( 'mceInsertContent', false, tag );
+				} else {
+					var ta = document.getElementById( editorId );
+					if ( ta ) {
+						var start = ta.selectionStart || 0;
+						var end   = ta.selectionEnd || 0;
+						ta.value  = ta.value.substring( 0, start ) + tag + ta.value.substring( end );
+						ta.selectionStart = ta.selectionEnd = start + tag.length;
+						ta.focus();
+					}
+				}
+
+				$select.val( '' );
+			} );
+		} )( jQuery );
+		</script>
+		<?php
 	}
 }
