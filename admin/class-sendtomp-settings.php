@@ -998,9 +998,10 @@ class SendToMP_Settings {
 		$member = isset( $api_result['member'] ) ? $api_result['member'] : [];
 
 		$result = [
-			'name'         => isset( $member['name'] ) ? $member['name'] : '',
-			'party'        => isset( $member['party'] ) ? $member['party'] : '',
-			'constituency' => isset( $member['constituency'] ) ? $member['constituency'] : '',
+			'name'          => isset( $member['name'] ) ? $member['name'] : '',
+			'party'         => isset( $member['party'] ) ? $member['party'] : '',
+			'constituency'  => isset( $member['constituency'] ) ? $member['constituency'] : '',
+			'thumbnail_url' => isset( $member['thumbnail_url'] ) ? esc_url_raw( $member['thumbnail_url'] ) : '',
 		];
 
 		set_transient( $cache_key, $result, HOUR_IN_SECONDS );

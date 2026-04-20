@@ -9,7 +9,7 @@ jQuery( function( $ ) {
 	'use strict';
 
 	function initPostcodeLookup( $input ) {
-		var $preview = $( '<div class="sendtomp-mp-preview" style="display:none; margin-top:6px; padding:8px 12px; background:#f0f6fc; border:1px solid #72aee6; border-radius:4px; font-size:0.9em;"></div>' );
+		var $preview = $( '<div class="sendtomp-mp-preview" style="display:none; align-items:center; gap:10px; margin-top:6px; padding:8px 12px; background:#f0f6fc; border:1px solid #72aee6; border-radius:4px; font-size:0.9em;"></div>' );
 		$input.after( $preview );
 
 		$input.on( 'input blur', function() {
@@ -33,12 +33,7 @@ jQuery( function( $ ) {
 					},
 					success: function( response ) {
 						if ( response.success && response.data.name ) {
-							$preview.html(
-								'<strong>Your MP:</strong> ' +
-								$( '<span>' ).text( response.data.name ).html() +
-								' (' + $( '<span>' ).text( response.data.constituency ).html() + ')' +
-								' &mdash; ' + $( '<span>' ).text( response.data.party ).html()
-							).show();
+							renderPreview( $preview, response.data );
 						} else {
 							$preview.hide().empty();
 						}
@@ -49,6 +44,57 @@ jQuery( function( $ ) {
 				} );
 			}, 500 ) );
 		} );
+	}
+
+	// Build the preview box. Uses jQuery .text() on every API-sourced string
+	// to escape any HTML. The thumbnail URL is validated to be https on the
+	// Parliament domain before use; anything else is dropped silently.
+	function renderPreview( $preview, data ) {
+		var $row  = $( '<div style="display:flex; align-items:center; gap:10px;"></div>' );
+		var thumb = safeThumbnailUrl( data.thumbnail_url );
+
+		if ( thumb ) {
+			$row.append(
+				$( '<img>' ).attr( {
+					src: thumb,
+					alt: data.name || '',
+					loading: 'lazy'
+				} ).css( {
+					width: '40px',
+					height: '40px',
+					'border-radius': '50%',
+					'object-fit': 'cover',
+					'flex-shrink': 0
+				} )
+			);
+		}
+
+		var $text = $( '<div></div>' );
+		$text.append( $( '<strong>' ).text( 'Your MP: ' ) );
+		$text.append( $( '<span>' ).text( data.name ) );
+		if ( data.constituency ) {
+			$text.append( document.createTextNode( ' (' ) );
+			$text.append( $( '<span>' ).text( data.constituency ) );
+			$text.append( document.createTextNode( ')' ) );
+		}
+		if ( data.party ) {
+			$text.append( document.createTextNode( ' — ' ) );
+			$text.append( $( '<span>' ).text( data.party ) );
+		}
+		$row.append( $text );
+
+		$preview.empty().append( $row ).css( 'display', 'flex' );
+	}
+
+	function safeThumbnailUrl( url ) {
+		if ( typeof url !== 'string' || ! url ) {
+			return '';
+		}
+		// Only accept https URLs on the Parliament Members API host.
+		if ( /^https:\/\/members-api\.parliament\.uk\//i.test( url ) ) {
+			return url;
+		}
+		return '';
 	}
 
 	// Initialise on any matching inputs.

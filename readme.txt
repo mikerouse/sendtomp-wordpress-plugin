@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.10
+Stable tag: 1.4.11
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -98,6 +98,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 2. Delivery log — track every submission with status, timestamps, and MP details
 
 == Changelog ==
+
+= 1.4.11 =
+* Live MP preview now shows the MP's official parliamentary portrait alongside their name and constituency — a richer at-a-glance check that the right MP has been matched before submission. Image is sourced from the Parliament Members API and shown only when served over HTTPS from that host.
 
 = 1.4.10 =
 * Fix live MP preview not appearing — Gravity Forms attaches the CSS class to the field wrapper rather than the input, so the lookup script was binding to the wrong element. Script now descends into the wrapper to find the text input.
