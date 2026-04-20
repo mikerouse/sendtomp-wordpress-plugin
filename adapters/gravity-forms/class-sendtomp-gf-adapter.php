@@ -15,11 +15,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Ensure the adapter interface is available.
 require_once dirname( __DIR__ ) . '/interface-sendtomp-form-adapter.php';
 
-// Ensure the GF addon framework is loaded before defining the class.
+// Ensure the GF feed addon framework is loaded before defining the class.
+// Feed add-ons need include_feed_addon_framework() specifically; the plain
+// include_addon_framework() only loads GFAddOn, not GFFeedAddOn.
 if ( ! class_exists( 'GFForms' ) ) {
 	return;
 }
-GFForms::include_addon_framework();
+if ( method_exists( 'GFForms', 'include_feed_addon_framework' ) ) {
+	GFForms::include_feed_addon_framework();
+}
+if ( ! class_exists( 'GFFeedAddOn' ) ) {
+	return;
+}
 
 /**
  * Class SendToMP_GF_Adapter

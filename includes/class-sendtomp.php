@@ -69,11 +69,10 @@ class SendToMP {
 			return;
 		}
 
-		// Gravity Forms adapter — uses GF's addon registration system.
+		// Gravity Forms adapter — register via gform_loaded so the feed
+		// addon framework is fully available before our class is defined.
 		if ( class_exists( 'GFForms' ) ) {
-			require_once SENDTOMP_PLUGIN_DIR . 'adapters/gravity-forms/class-sendtomp-gf-adapter.php';
-			GFAddOn::register( 'SendToMP_GF_Adapter' );
-			$this->adapters['gravity-forms'] = SendToMP_GF_Adapter::get_instance();
+			add_action( 'gform_loaded', [ $this, 'register_gf_adapter' ], 5 );
 		}
 
 		// WPForms adapter (Plus+ tier).
@@ -99,6 +98,25 @@ class SendToMP {
 			$adapter->register_hooks();
 			$this->adapters['webhook'] = $adapter;
 		}
+	}
+
+	/**
+	 * Register the Gravity Forms feed adapter.
+	 *
+	 * Called on the `gform_loaded` action so the feed addon framework
+	 * (GFFeedAddOn) is available before the adapter class is defined.
+	 *
+	 * @return void
+	 */
+	public function register_gf_adapter(): void {
+		require_once SENDTOMP_PLUGIN_DIR . 'adapters/gravity-forms/class-sendtomp-gf-adapter.php';
+
+		if ( ! class_exists( 'SendToMP_GF_Adapter' ) ) {
+			return;
+		}
+
+		GFAddOn::register( 'SendToMP_GF_Adapter' );
+		$this->adapters['gravity-forms'] = SendToMP_GF_Adapter::get_instance();
 	}
 
 	public function get_adapters() {

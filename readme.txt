@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,11 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Changelog ==
 
+= 1.4.1 =
+* Fix fatal error on sites with Gravity Forms active but older feed addon framework loading
+* Use include_feed_addon_framework() instead of include_addon_framework() for the GF adapter
+* Register the GF adapter on the gform_loaded action so the framework is guaranteed to be ready
+
 = 1.4.0 =
 * New Status dashboard — see at a glance which form plugins are installed, whether SMTP is set up, your current plan, and activity totals
 * Plugin activation now redirects to the Status tab so first-time users know what to do next
@@ -158,6 +163,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.4.1 =
+Fixes a fatal error when activating alongside Gravity Forms on some configurations.
 
 = 1.4.0 =
 Adds a new Status dashboard that shows which form plugins and SMTP providers are set up, so you know what's needed to start sending messages.
