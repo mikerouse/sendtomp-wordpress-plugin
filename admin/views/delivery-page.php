@@ -22,7 +22,10 @@ $is_pro      = SendToMP_License::TIER_PRO === $tier;
 
 	<?php if ( $smtp_plugin ) : ?>
 		<p style="color: #00a32a; font-size: 1.1em;">
-			&#10003; <strong><?php echo esc_html( sprintf( __( 'SMTP plugin detected: %s', 'sendtomp' ), $smtp_plugin ) ); ?></strong>
+			&#10003; <strong><?php
+				/* translators: %s: name of the detected SMTP plugin */
+				echo esc_html( sprintf( __( 'SMTP plugin detected: %s', 'sendtomp' ), $smtp_plugin ) );
+			?></strong>
 		</p>
 		<p class="description"><?php esc_html_e( 'Your site is configured to send emails via a dedicated SMTP service. This is the recommended setup for reliable delivery to parliamentary email addresses.', 'sendtomp' ); ?></p>
 	<?php else : ?>

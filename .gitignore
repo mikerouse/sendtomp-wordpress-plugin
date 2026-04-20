@@ -26,3 +26,6 @@ package-lock.json
 .claude/
 .mcp.json
 blueprint*.json
+PLAN.md
+MEMORY.md
+ERRORS.md

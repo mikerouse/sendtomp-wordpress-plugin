@@ -210,6 +210,7 @@ class SendToMP_Logger {
 		// Get items.
 		$query = "SELECT * FROM {$table} {$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
 		$query_values = array_merge( $values, [ $per_page, $offset ] );
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- $table, $where_sql, $orderby, $order built from internal hardcoded values; direct query required for plugin tables.
 		$items = $wpdb->get_results( $wpdb->prepare( $query, $query_values ) );
 
 		return [
@@ -228,9 +229,13 @@ class SendToMP_Logger {
 
 		$table = self::get_table_name();
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$total_sent      = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE delivery_status = %s", 'sent' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$total_confirmed = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE delivery_status = %s", 'confirmed' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$total_failed    = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE delivery_status = %s", 'failed' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$total_pending   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE delivery_status = %s", 'pending_confirmation' ) );
 
 		$denominator = $total_confirmed + $total_pending + $total_sent;
@@ -276,6 +281,7 @@ class SendToMP_Logger {
 
 		$table    = self::get_table_name();
 		$cutoff   = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$deleted  = $wpdb->query(
 			$wpdb->prepare( "DELETE FROM {$table} WHERE created_at < %s", $cutoff )
 		);

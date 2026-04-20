@@ -638,7 +638,7 @@ class SendToMP_Settings {
 			: '<span style="color: #999;">' . esc_html__( 'No key generated yet', 'sendtomp' ) . '</span>';
 
 		echo '<div id="sendtomp-webhook-key-' . esc_attr( $key_type ) . '">';
-		echo '<p>' . $status . '</p>';
+		echo '<p>' . wp_kses_post( $status ) . '</p>';
 		echo '<button type="button" class="button button-secondary sendtomp-generate-key" data-key-type="' . esc_attr( $key_type ) . '">';
 		echo esc_html( $has_key ? __( 'Regenerate Key', 'sendtomp' ) : __( 'Generate Key', 'sendtomp' ) );
 		echo '</button>';
@@ -887,11 +887,11 @@ class SendToMP_Settings {
 		check_ajax_referer( 'sendtomp_admin', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( __( 'Permission denied.', 'sendtomp' ) );
+			wp_die( esc_html__( 'Permission denied.', 'sendtomp' ) );
 		}
 
 		if ( ! sendtomp()->can( 'csv_export' ) ) {
-			wp_die( __( 'CSV export requires a Pro plan.', 'sendtomp' ) );
+			wp_die( esc_html__( 'CSV export requires a Pro plan.', 'sendtomp' ) );
 		}
 
 		header( 'Content-Type: text/csv; charset=utf-8' );
@@ -932,6 +932,7 @@ class SendToMP_Settings {
 			$page++;
 		} while ( count( $logs['items'] ) >= 1000 );
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing php://output stream used for direct CSV download, WP_Filesystem is not applicable.
 		fclose( $output );
 		exit;
 	}
@@ -1154,8 +1155,8 @@ class SendToMP_Settings {
 			esc_attr( $key ),
 			esc_attr( $name ),
 			esc_attr( $value ),
-			$min,
-			$max
+			(int) $min,
+			(int) $max
 		);
 
 		if ( ! empty( $args['description'] ) ) {
@@ -1229,7 +1230,7 @@ class SendToMP_Settings {
 		$label   = isset( $args['label'] ) ? $args['label'] : '';
 
 		echo '<label>';
-		echo '<input type="checkbox" name="' . esc_attr( self::OPTION_NAME . '[' . $key . ']' ) . '" value="1" ' . $checked . ' />';
+		echo '<input type="checkbox" name="' . esc_attr( self::OPTION_NAME . '[' . $key . ']' ) . '" value="1" ' . esc_attr( $checked ) . ' />';
 		echo ' ' . esc_html( $label );
 		echo '</label>';
 
@@ -1267,6 +1268,7 @@ class SendToMP_Settings {
 			$checked    = ! empty( $status['checked_at'] ) ? $status['checked_at'] : '—';
 
 			echo '<div style="background: #f0faf0; border: 1px solid #00a32a; border-radius: 4px; padding: 12px 16px; margin-bottom: 12px;">';
+			/* translators: %s: License tier label (e.g. "Pro", "Enterprise"). */
 			echo '<strong style="color: #00a32a;">&#10003; ' . esc_html( sprintf( __( 'Active — %s Plan', 'sendtomp' ), $tier_label ) ) . '</strong>';
 			echo '<br><small>' . esc_html__( 'Expires:', 'sendtomp' ) . ' ' . esc_html( $expires ) . '</small>';
 			echo '<br><small>' . esc_html__( 'Last checked:', 'sendtomp' ) . ' ' . esc_html( $checked ) . '</small>';
@@ -1509,6 +1511,7 @@ TEXT;
 			wp_send_json_error( [ 'message' => $result->get_error_message() ] );
 		}
 
+		/* translators: %s: Recipient email address. */
 		wp_send_json_success( [ 'message' => sprintf( __( 'Test email sent to %s.', 'sendtomp' ), $to ) ] );
 	}
 
@@ -1528,7 +1531,8 @@ TEXT;
 		$deleted = SendToMP_Logger::purge_old( $days );
 
 		wp_send_json_success( [
-			'message' => sprintf( __( 'Purged %d log entries older than %d days.', 'sendtomp' ), $deleted, $days ),
+			/* translators: 1: Number of log entries purged. 2: Age threshold in days. */
+			'message' => sprintf( __( 'Purged %1$d log entries older than %2$d days.', 'sendtomp' ), $deleted, $days ),
 		] );
 	}
 

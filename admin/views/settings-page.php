@@ -1,6 +1,7 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
 <?php
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL filter parameter, no state change.
 $current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
 $tabs = array(
 	'general'      => __( 'General', 'sendtomp' ),
@@ -107,6 +108,7 @@ $tabs = array(
 				<?php
 				$smtp_plugin = ( new SendToMP_Mailer() )->detect_smtp_plugin();
 				if ( $smtp_plugin ) {
+					/* translators: %s: name of the detected SMTP plugin */
 					echo '<p style="color: #00a32a;">&#10003; ' . esc_html( sprintf( __( 'Detected: %s', 'sendtomp' ), $smtp_plugin ) ) . '</p>';
 				} else {
 					echo '<p style="color: #d63638;">&#10007; ' . esc_html__( 'No SMTP plugin detected. Email delivery may be unreliable.', 'sendtomp' ) . '</p>';

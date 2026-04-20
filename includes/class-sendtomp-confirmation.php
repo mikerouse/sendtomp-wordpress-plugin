@@ -133,6 +133,7 @@ class SendToMP_Confirmation {
 
 		$table = $wpdb->prefix . 'sendtomp_pending';
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$row = $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM {$table} WHERE token = %s LIMIT 1", $token ),
 			ARRAY_A
@@ -184,6 +185,7 @@ class SendToMP_Confirmation {
 		$table = $wpdb->prefix . 'sendtomp_pending';
 
 		// Atomic update — only confirm if still pending (prevents double-send race condition).
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$updated = $wpdb->query( $wpdb->prepare(
 			"UPDATE {$table} SET status = 'confirmed', consent_given_at = %s WHERE id = %d AND status = 'pending'",
 			gmdate( 'Y-m-d H:i:s' ),
@@ -195,6 +197,7 @@ class SendToMP_Confirmation {
 		}
 
 		// Retrieve the row to get submission data.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$row = $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d LIMIT 1", $pending_id ),
 			ARRAY_A
@@ -222,6 +225,7 @@ class SendToMP_Confirmation {
 
 		if ( is_wp_error( $result ) ) {
 			// Revert status and clear consent so the user can try again.
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 			$wpdb->query( $wpdb->prepare(
 				"UPDATE {$table} SET status = 'pending', consent_given_at = NULL WHERE id = %d",
 				$pending_id
@@ -376,6 +380,7 @@ class SendToMP_Confirmation {
 
 		$table = $wpdb->prefix . 'sendtomp_pending';
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$table} WHERE status = %s AND expires_at < %s",
@@ -396,6 +401,7 @@ class SendToMP_Confirmation {
 
 		$table = $wpdb->prefix . 'sendtomp_pending';
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; direct query required for plugin tables.
 		return (int) $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$table} WHERE constituent_email = %s",

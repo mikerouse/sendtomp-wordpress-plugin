@@ -20,13 +20,8 @@ class SendToMP {
 	private function __construct() {}
 
 	public function init() {
-		load_plugin_textdomain( 'sendtomp', false, dirname( SENDTOMP_PLUGIN_BASENAME ) . '/languages' );
-
 		$this->maybe_upgrade_db();
 		$this->load_dependencies();
-
-		// Initialise custom updater (checks for plugin updates via licensing API).
-		SendToMP_Updater::init();
 
 		// Schedule daily license status refresh.
 		add_action( 'sendtomp_license_check', [ 'SendToMP_License', 'refresh_status' ] );

@@ -86,8 +86,8 @@ jobs:
             3. Upload the ZIP and activate
 
             ### Updating
-            Plus and Pro subscribers receive automatic update notifications in WordPress.
-            Free users can download the latest release from this page.
+            Updates are distributed via the WordPress.org plugin directory.
+            You can also download the ZIP from this release page if you prefer to install manually.
 
       - name: Register release in Bluetorch API
         if: vars.BLUETORCH_API_URL != ''

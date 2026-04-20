@@ -1,10 +1,15 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 
 <?php
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL filter parameter, no state change.
 $filter_status = isset($_GET['status']) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '';
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL filter parameter, no state change.
 $filter_from   = isset($_GET['date_from']) ? sanitize_text_field( wp_unslash( $_GET['date_from'] ) ) : '';
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL filter parameter, no state change.
 $filter_to     = isset($_GET['date_to']) ? sanitize_text_field( wp_unslash( $_GET['date_to'] ) ) : '';
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL filter parameter, no state change.
 $filter_search = isset($_GET['search']) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL filter parameter, no state change.
 $paged         = isset($_GET['paged']) ? max(1, absint( $_GET['paged'] )) : 1;
 $per_page      = 20;
 
@@ -110,7 +115,10 @@ $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 		<div class="tablenav bottom">
 			<div class="tablenav-pages">
 				<span class="displaying-num">
-					<?php echo esc_html(sprintf(_n('%s item', '%s items', $total_items, 'sendtomp'), number_format_i18n($total_items))); ?>
+					<?php
+					/* translators: %s: formatted number of log items */
+					echo esc_html(sprintf(_n('%s item', '%s items', $total_items, 'sendtomp'), number_format_i18n($total_items)));
+					?>
 				</span>
 				<span class="pagination-links">
 					<?php if ($paged > 1) : ?>
