@@ -29,3 +29,6 @@ blueprint*.json
 PLAN.md
 MEMORY.md
 ERRORS.md
+
+# Dev references (not shipped in plugin ZIP)
+docs/
