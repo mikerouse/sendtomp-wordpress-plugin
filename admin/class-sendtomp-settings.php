@@ -155,19 +155,12 @@ class SendToMP_Settings {
 	public function render_branding_field( array $args = [] ): void {
 		$tier = SendToMP_License::get_tier();
 
-		if ( SendToMP_License::TIER_FREE === $tier ) {
-			echo '<p class="description">';
-			echo esc_html__( 'A small "Powered by Bluetorch\'s SendToMP" line appears in the footer of emails to MPs, confirmation emails, and the confirmation/thank-you pages. On the Free plan this is always shown. Upgrade to Plus to toggle it, or Pro for white-label (off by default).', 'sendtomp' );
-			echo '</p>';
-			return;
-		}
-
 		$this->render_checkbox_field( [
 			'key'         => 'show_branding',
 			'label'       => __( 'Show "Powered by Bluetorch\'s SendToMP" in email footers and confirmation pages', 'sendtomp' ),
 			'description' => SendToMP_License::TIER_PRO === $tier
 				? __( 'Pro plan: branding is off by default (white-label). Enable this if you want to show "Powered by Bluetorch\'s SendToMP" — it links to bluetorch.co.uk/sendtomp and appears as a small footer line.', 'sendtomp' )
-				: __( 'Plus plan: when checked, a "Powered by Bluetorch\'s SendToMP" line appears in the footer of MP emails, confirmation emails, and the confirmation page. Uncheck to remove it.', 'sendtomp' ),
+				: __( 'When checked, a "Powered by Bluetorch\'s SendToMP" line appears in the footer of MP emails, confirmation emails, and the confirmation page. Uncheck to remove it.', 'sendtomp' ),
 		] );
 	}
 
