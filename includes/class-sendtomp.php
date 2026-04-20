@@ -69,10 +69,16 @@ class SendToMP {
 			return;
 		}
 
-		// Gravity Forms adapter — register via gform_loaded so the feed
-		// addon framework is fully available before our class is defined.
+		// Gravity Forms adapter — registration must happen after GF's feed
+		// addon framework is loaded. GF fires 'gform_loaded' at plugins_loaded:10
+		// and our init() runs at plugins_loaded:20, so that hook has already
+		// fired by now. Call register_gf_adapter() directly if GF is present.
 		if ( class_exists( 'GFForms' ) ) {
-			add_action( 'gform_loaded', [ $this, 'register_gf_adapter' ], 5 );
+			if ( did_action( 'gform_loaded' ) ) {
+				$this->register_gf_adapter();
+			} else {
+				add_action( 'gform_loaded', [ $this, 'register_gf_adapter' ], 5 );
+			}
 		}
 
 		// WPForms adapter (Plus+ tier).
