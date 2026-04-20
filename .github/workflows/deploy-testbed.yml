@@ -1,0 +1,124 @@
+name: Deploy to Testbed
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-testbed
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+          tools: none
+
+      - name: PHP syntax check
+        run: |
+          set -e
+          failed=0
+          while IFS= read -r f; do
+            if ! php -l "$f" > /dev/null 2>&1; then
+              echo "::error file=$f::PHP syntax error"
+              php -l "$f"
+              failed=1
+            fi
+          done < <(find . -name '*.php' -not -path './.git/*' -not -path './.github/*')
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::PHP syntax check failed — deploy aborted"
+            exit 1
+          fi
+          echo "All PHP files passed syntax check"
+
+      - name: Compute changed files
+        id: diff
+        run: |
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            CHANGED=$(git diff --name-only HEAD^ HEAD)
+          else
+            CHANGED=$(git ls-tree --name-only -r HEAD)
+          fi
+          COUNT=$(echo "$CHANGED" | grep -c . || echo 0)
+          TRUNCATED=$(echo "$CHANGED" | head -50)
+
+          {
+            echo "changed_files<<EOF"
+            echo "$TRUNCATED"
+            echo "EOF"
+            echo "changed_count=$COUNT"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SITEGROUND_SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SITEGROUND_SSH_HOST }}
+          SSH_PORT: ${{ secrets.SITEGROUND_SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy via rsync
+        env:
+          SSH_HOST: ${{ secrets.SITEGROUND_SSH_HOST }}
+          SSH_PORT: ${{ secrets.SITEGROUND_SSH_PORT }}
+          SSH_USER: ${{ secrets.SITEGROUND_SSH_USER }}
+          PLUGIN_PATH: ${{ secrets.SITEGROUND_PLUGIN_PATH }}
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT" \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='build' \
+            --exclude='node_modules' \
+            --exclude='.env*' \
+            --exclude='*.md' \
+            --exclude='composer.*' \
+            --exclude='package*.json' \
+            --exclude='phpunit*' \
+            --exclude='tests' \
+            --exclude='.phpcs*' \
+            --exclude='.editorconfig' \
+            --exclude='.gitignore' \
+            --exclude='.mcp.json' \
+            --exclude='blueprint*.json' \
+            ./ "$SSH_USER@$SSH_HOST:$PLUGIN_PATH/"
+
+      - name: Write deploy summary
+        if: always()
+        run: |
+          {
+            echo "## Testbed deployment"
+            echo ""
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "**Status:** Deployed to untruecrime.uk"
+            else
+              echo "**Status:** Failed"
+            fi
+            echo ""
+            echo "**Commit:** \`${{ github.sha }}\`"
+            echo "**Author:** ${{ github.actor }}"
+            echo ""
+            echo "### Changed files (${{ steps.diff.outputs.changed_count }})"
+            echo ""
+            echo '```'
+            echo "${{ steps.diff.outputs.changed_files }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
