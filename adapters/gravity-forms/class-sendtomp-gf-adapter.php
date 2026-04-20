@@ -76,6 +76,10 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 		parent::init();
 
 		add_filter( 'gform_custom_merge_tags', [ $this, 'add_sendtomp_merge_tags' ], 10, 4 );
+
+		if ( is_admin() ) {
+			add_action( 'admin_print_footer_scripts', [ $this, 'print_rich_editor_tag_data' ], 20 );
+		}
 	}
 
 	/**
@@ -124,6 +128,15 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 				'callback' => function() {
 					SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 				},
+			],
+			[
+				'handle'  => 'sendtomp-gf-rich-editor',
+				'src'     => SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-gf-rich-editor.js',
+				'version' => $this->_version,
+				'deps'    => [ 'jquery', 'wp-editor' ],
+				'enqueue' => [
+					[ 'admin_page' => [ 'form_settings' ] ],
+				],
 			],
 		] );
 	}
@@ -343,11 +356,12 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 					],
 					[
 						'label'       => esc_html__( 'Message Body', 'sendtomp' ),
-						'type'        => 'visual_editor',
+						'type'        => 'textarea',
 						'name'        => 'message_body_template',
+						'class'       => 'sendtomp-rich-editor medium',
 						'required'    => true,
 						'tooltip'     => esc_html__( 'The body of the email sent to the MP. Mix plain text, formatting, and merge tags.', 'sendtomp' ),
-						'description' => esc_html__( 'Use merge tags (the Gravity Forms icon at the top of the editor) to insert form field values. Example: "Dear {member_name}, {Your message}. Yours sincerely, {Name}". Formatting (bold, italics, lists, links) is preserved when the email is sent to the MP.', 'sendtomp' ),
+						'description' => esc_html__( 'Use the merge tag picker above to insert form field values or MP tokens. Formatting (bold, italics, lists, links) is preserved when the email is sent.', 'sendtomp' ),
 					],
 				],
 			],
@@ -446,49 +460,16 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	}
 
 	/**
-	 * Render a WYSIWYG (wp_editor) input as a feed setting field.
+	 * Build the list of GF form-field merge tag options for the picker,
+	 * then emit it as a global JS variable for the rich editor script.
 	 *
-	 * Used for the Message Body template so campaign owners can format the
-	 * letter to the MP (bold, italics, bullet points, links) without having
-	 * to hand-write HTML. The framework handles the label, tooltip, and
-	 * required marker via single_setting_row; this method renders just the
-	 * input portion plus a merge-tag picker (since TinyMCE hides the
-	 * textarea, the native GF `merge-tag-support` class does not attach).
+	 * Runs on admin_print_footer_scripts on the form settings page.
 	 *
-	 * @param array $field Field definition from feed_settings_fields().
 	 * @return void
 	 */
-	public function settings_visual_editor( $field ): void {
-		$field_name = (string) rgar( $field, 'name', '' );
-		$value      = (string) $this->get_setting( $field_name );
-		$editor_id  = '_gaddon_setting_' . $field_name;
-		$form       = $this->get_current_form();
+	public function print_rich_editor_tag_data(): void {
+		$form = $this->get_current_form();
 
-		$this->render_merge_tag_picker( $editor_id, $form );
-
-		wp_editor(
-			$value,
-			$editor_id,
-			[
-				'textarea_name' => '_gaddon_setting_' . $field_name,
-				'textarea_rows' => 12,
-				'media_buttons' => false,
-				'teeny'         => true,
-				'quicktags'     => true,
-			]
-		);
-	}
-
-	/**
-	 * Render a merge-tag picker dropdown that inserts tokens into the
-	 * TinyMCE editor at the cursor position (or into the textarea when
-	 * TinyMCE is in Text/Code mode).
-	 *
-	 * @param string     $editor_id The target editor / textarea id.
-	 * @param array|null $form      The current form (may be null in edge cases).
-	 * @return void
-	 */
-	private function render_merge_tag_picker( string $editor_id, $form ): void {
 		$form_options = [];
 		if ( is_array( $form ) && ! empty( $form['fields'] ) ) {
 			foreach ( $form['fields'] as $gf_field ) {
@@ -535,52 +516,17 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 		];
 
 		?>
-		<div class="sendtomp-merge-tag-picker" style="margin-bottom: 8px;">
-			<label style="display:inline-block; margin-right:6px; font-weight:600;">
-				<?php esc_html_e( 'Insert merge tag:', 'sendtomp' ); ?>
-			</label>
-			<select class="sendtomp-insert-merge-tag" data-editor-id="<?php echo esc_attr( $editor_id ); ?>">
-				<option value=""><?php esc_html_e( '— choose —', 'sendtomp' ); ?></option>
-				<?php if ( ! empty( $form_options ) ) : ?>
-					<optgroup label="<?php esc_attr_e( 'Form fields', 'sendtomp' ); ?>">
-						<?php foreach ( $form_options as $opt ) : ?>
-							<option value="<?php echo esc_attr( $opt['tag'] ); ?>"><?php echo esc_html( $opt['label'] ); ?></option>
-						<?php endforeach; ?>
-					</optgroup>
-				<?php endif; ?>
-				<optgroup label="<?php esc_attr_e( 'SendToMP tokens (resolved at send time)', 'sendtomp' ); ?>">
-					<?php foreach ( $sendtomp_options as $opt ) : ?>
-						<option value="<?php echo esc_attr( $opt['tag'] ); ?>"><?php echo esc_html( $opt['label'] ); ?></option>
-					<?php endforeach; ?>
-				</optgroup>
-			</select>
-		</div>
-		<script>
-		( function( $ ) {
-			$( document ).on( 'change', '.sendtomp-insert-merge-tag', function() {
-				var $select  = $( this );
-				var tag      = $select.val();
-				var editorId = $select.data( 'editor-id' );
-				if ( ! tag || ! editorId ) { return; }
-
-				var editor = ( window.tinymce && tinymce.get ) ? tinymce.get( editorId ) : null;
-
-				if ( editor && ! editor.isHidden() ) {
-					editor.execCommand( 'mceInsertContent', false, tag );
-				} else {
-					var ta = document.getElementById( editorId );
-					if ( ta ) {
-						var start = ta.selectionStart || 0;
-						var end   = ta.selectionEnd || 0;
-						ta.value  = ta.value.substring( 0, start ) + tag + ta.value.substring( end );
-						ta.selectionStart = ta.selectionEnd = start + tag.length;
-						ta.focus();
-					}
+		<script type="text/javascript">
+			window.sendtompRichEditor = {
+				formFields:     <?php echo wp_json_encode( $form_options ); ?>,
+				sendtompTokens: <?php echo wp_json_encode( $sendtomp_options ); ?>,
+				i18n: {
+					insertLabel: <?php echo wp_json_encode( __( 'Insert merge tag:', 'sendtomp' ) ); ?>,
+					choose:      <?php echo wp_json_encode( __( '— choose —', 'sendtomp' ) ); ?>,
+					formFields:  <?php echo wp_json_encode( __( 'Form fields', 'sendtomp' ) ); ?>,
+					sendtomp:    <?php echo wp_json_encode( __( 'SendToMP tokens (resolved at send time)', 'sendtomp' ) ); ?>
 				}
-
-				$select.val( '' );
-			} );
-		} )( jQuery );
+			};
 		</script>
 		<?php
 	}
