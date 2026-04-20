@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.4
+Stable tag: 1.4.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,10 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Changelog ==
 
+= 1.4.5 =
+* Add SendToMP merge tags to the Gravity Forms merge-tag picker so campaign owners can insert MP Name, MP Constituency, MP Party, MP House, Constituent Name/Postcode, and Site Name from the UI
+* These tokens are resolved at send time after the postcode lookup, so the MP's actual name and constituency appear in the delivered email
+
 = 1.4.4 =
 * Message Body in the Gravity Forms feed is now a rich WYSIWYG editor with bold, italics, lists, links, and blockquotes
 * MP emails automatically switch to HTML format when the body template contains HTML so formatting is preserved
@@ -177,6 +181,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.4.5 =
+Adds MP Name, MP Constituency, and other SendToMP-specific tokens to the Gravity Forms merge-tag picker.
 
 = 1.4.4 =
 Message Body template now has a rich WYSIWYG editor; emails to MPs render with formatting intact.

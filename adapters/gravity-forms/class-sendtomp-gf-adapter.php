@@ -68,6 +68,45 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	}
 
 	/**
+	 * Register additional hooks beyond GFFeedAddOn's defaults.
+	 *
+	 * @return void
+	 */
+	public function init() {
+		parent::init();
+
+		add_filter( 'gform_custom_merge_tags', [ $this, 'add_sendtomp_merge_tags' ], 10, 4 );
+	}
+
+	/**
+	 * Expose SendToMP-specific runtime tokens in the Gravity Forms
+	 * merge-tag picker so campaign owners can insert them from the UI.
+	 *
+	 * These tokens are not resolved by Gravity Forms — they're passed
+	 * through verbatim and substituted by SendToMP_Mailer::replace_placeholders()
+	 * at send time, once the MP has been resolved from the postcode.
+	 *
+	 * @param array $merge_tags  Existing merge tags.
+	 * @param int   $form_id     Form ID being edited.
+	 * @param array $fields      Form fields.
+	 * @param int   $element_id  Element invoking the picker.
+	 * @return array
+	 */
+	public function add_sendtomp_merge_tags( $merge_tags, $form_id, $fields, $element_id ) {
+		$sendtomp_tags = [
+			[ 'tag' => '{mp_name}',          'label' => esc_html__( "MP Name (after postcode lookup)", 'sendtomp' ) ],
+			[ 'tag' => '{mp_constituency}',  'label' => esc_html__( 'MP Constituency', 'sendtomp' ) ],
+			[ 'tag' => '{mp_party}',         'label' => esc_html__( 'MP Party', 'sendtomp' ) ],
+			[ 'tag' => '{mp_house}',         'label' => esc_html__( 'MP House (Commons / Lords)', 'sendtomp' ) ],
+			[ 'tag' => '{constituent_name}', 'label' => esc_html__( 'Constituent Name (mapped)', 'sendtomp' ) ],
+			[ 'tag' => '{constituent_postcode}', 'label' => esc_html__( 'Constituent Postcode (mapped)', 'sendtomp' ) ],
+			[ 'tag' => '{site_name}',        'label' => esc_html__( 'Your site name', 'sendtomp' ) ],
+		];
+
+		return array_merge( is_array( $merge_tags ) ? $merge_tags : [], $sendtomp_tags );
+	}
+
+	/**
 	 * Enqueue scripts for the GF feed settings page.
 	 *
 	 * @return array
