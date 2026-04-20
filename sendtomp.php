@@ -3,20 +3,19 @@
  * Plugin Name: SendToMP
  * Plugin URI: https://www.bluetorch.co.uk/sendtomp
  * Description: Send verified constituent messages to UK Members of Parliament and Peers. Supports Gravity Forms, WPForms, Contact Form 7, and webhook integrations. Built by a former parliamentary assistant.
- * Version: 1.3.2
+ * Version: 1.3.3
  * Author: Bluetorch Consulting Ltd
  * Author URI: https://www.bluetorch.co.uk
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: sendtomp
- * Update URI: https://wordpress.org/plugins/sendtomp/
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SENDTOMP_VERSION', '1.3.2' );
+define( 'SENDTOMP_VERSION', '1.3.3' );
 define( 'SENDTOMP_PLUGIN_FILE', __FILE__ );
 define( 'SENDTOMP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SENDTOMP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

@@ -2,8 +2,8 @@
 Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
-Tested up to: 6.7
-Stable tag: 1.3.2
+Tested up to: 6.9
+Stable tag: 1.3.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,10 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Changelog ==
 
+= 1.3.3 =
+* Removed Update URI header (not permitted on wp.org-hosted plugins)
+* Updated "Tested up to" to WordPress 6.9
+
 = 1.3.2 =
 * Cleared remaining Plugin Check warnings for a clean PCP report
 * Added phpcs:ignore annotations to legitimate direct DB queries in logger
@@ -147,6 +151,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.3.3 =
+Fixes WordPress.org automated scan errors — removed Update URI header, updated tested-up-to version.
 
 = 1.3.2 =
 Code quality improvements for a clean Plugin Check report.
