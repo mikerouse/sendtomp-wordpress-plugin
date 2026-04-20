@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,14 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Changelog ==
 
+= 1.3.0 =
+* Prepared for WordPress.org plugin directory submission
+* Added escaping at point of output for all template variables
+* Moved all inline scripts to properly enqueued JavaScript files
+* Wrapped all user-facing strings in translation functions (i18n)
+* Added optional branding toggle for all tiers including free
+* Added GPLv2 LICENSE file and phpcs.xml coding standards config
+
 = 1.2.0 =
 * Hardcoded API URL for improved reliability
 * Removed api_url and api_key settings from admin interface
@@ -125,6 +133,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Improved WordPress.org compliance — better escaping, i18n support, and optional branding for all tiers.
 
 = 1.2.0 =
 Simplified setup — API URL is now hardcoded for reliability. No action needed on upgrade.
