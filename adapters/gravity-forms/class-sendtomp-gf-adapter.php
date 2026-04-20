@@ -76,10 +76,66 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 		parent::init();
 
 		add_filter( 'gform_custom_merge_tags', [ $this, 'add_sendtomp_merge_tags' ], 10, 4 );
+		add_filter( 'gform_pre_render', [ $this, 'maybe_add_postcode_preview_class' ] );
+		add_filter( 'gform_pre_validation', [ $this, 'maybe_add_postcode_preview_class' ] );
 
 		if ( is_admin() ) {
 			add_action( 'admin_print_footer_scripts', [ $this, 'print_rich_editor_tag_data' ], 20 );
 		}
+	}
+
+	/**
+	 * If the Show Live MP Preview setting is on, attach the
+	 * `sendtomp-postcode` CSS class to the form field mapped as the
+	 * constituent postcode in any active SendToMP feed for this form.
+	 *
+	 * The frontend postcode-lookup JS picks up the class and renders
+	 * the live MP preview beneath the field. This removes the need
+	 * for site owners to hand-edit CSS Class Name in the field editor.
+	 *
+	 * @param array $form The Gravity Forms form object.
+	 * @return array The (possibly modified) form.
+	 */
+	public function maybe_add_postcode_preview_class( $form ) {
+		if ( ! function_exists( 'sendtomp' ) || ! sendtomp()->get_setting( 'show_mp_preview' ) ) {
+			return $form;
+		}
+
+		if ( empty( $form['id'] ) || empty( $form['fields'] ) ) {
+			return $form;
+		}
+
+		$feeds = $this->get_feeds( $form['id'] );
+		if ( empty( $feeds ) ) {
+			return $form;
+		}
+
+		$postcode_field_ids = [];
+		foreach ( $feeds as $feed ) {
+			if ( empty( $feed['is_active'] ) ) {
+				continue;
+			}
+			$id = rgar( $feed['meta'], 'fieldMap_constituent_postcode' );
+			if ( '' !== (string) $id ) {
+				$postcode_field_ids[ (string) $id ] = true;
+			}
+		}
+
+		if ( empty( $postcode_field_ids ) ) {
+			return $form;
+		}
+
+		foreach ( $form['fields'] as $field ) {
+			if ( ! isset( $postcode_field_ids[ (string) $field->id ] ) ) {
+				continue;
+			}
+			$existing = (string) ( $field->cssClass ?? '' );
+			if ( false === strpos( $existing, 'sendtomp-postcode' ) ) {
+				$field->cssClass = trim( $existing . ' sendtomp-postcode' );
+			}
+		}
+
+		return $form;
 	}
 
 	/**

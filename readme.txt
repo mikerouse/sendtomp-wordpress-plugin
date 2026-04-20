@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.8
+Stable tag: 1.4.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -98,6 +98,10 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 2. Delivery log — track every submission with status, timestamps, and MP details
 
 == Changelog ==
+
+= 1.4.9 =
+* New "Show Live MP Preview" setting on the General tab — toggle on to reveal the matched MP's name and constituency under the postcode field as visitors type
+* No CSS classes required: the plugin finds the field you mapped as the postcode in your Gravity Forms SendToMP feed and attaches the preview automatically
 
 = 1.4.8 =
 * Replace the TinyMCE WYSIWYG with a Markdown editor for the Gravity Forms Message Body — more reliable, cleaner to save, visible syntax, no external library dependencies
@@ -195,6 +199,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.4.9 =
+Adds a site-wide toggle for the live MP preview on forms — no per-field CSS class required.
 
 = 1.4.8 =
 Message Body is now a Markdown editor with a formatting toolbar and cheatsheet — more reliable than the previous WYSIWYG.

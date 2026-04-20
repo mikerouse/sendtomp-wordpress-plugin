@@ -131,6 +131,19 @@ class SendToMP_Settings {
 		);
 
 		add_settings_field(
+			'show_mp_preview',
+			__( 'Show Live MP Preview', 'sendtomp' ),
+			[ $this, 'render_checkbox_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key'         => 'show_mp_preview',
+				'label'       => __( 'Show the matched MP under the postcode field as visitors type', 'sendtomp' ),
+				'description' => __( 'Gives visitors confidence they are about to write to the correct representative. Applies automatically to the postcode field you mapped in your Gravity Forms SendToMP feed — no CSS classes required.', 'sendtomp' ),
+			]
+		);
+
+		add_settings_field(
 			'show_branding',
 			__( 'Show Branding', 'sendtomp' ),
 			[ $this, 'render_branding_field' ],
@@ -1470,12 +1483,13 @@ TEXT;
 			$sanitized['rate_limit_global'] = absint( $input['rate_limit_global'] );
 		}
 
-		// Branding — only update if a branding-related field was in the submitted form.
-		// This prevents checkbox values resetting when saving from tabs that
-		// don't include these inputs (e.g., the Webhook API tab).
+		// Branding / general checkboxes — only update if a related field was in
+		// the submitted form. Prevents checkbox values resetting when saving
+		// from tabs that don't include these inputs (e.g., the Webhook API tab).
 		if ( isset( $input['show_branding'] ) || isset( $input['campaign_type'] ) ) {
-			$sanitized['show_branding']  = ! empty( $input['show_branding'] );
+			$sanitized['show_branding']   = ! empty( $input['show_branding'] );
 			$sanitized['directory_optin'] = ! empty( $input['directory_optin'] );
+			$sanitized['show_mp_preview'] = ! empty( $input['show_mp_preview'] );
 		}
 
 		// License.
