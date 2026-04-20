@@ -897,8 +897,10 @@ class SendToMP_Settings {
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename=sendtomp-logs-' . gmdate( 'Y-m-d' ) . '.csv' );
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- writing CSV directly to the php://output stream for download; WP_Filesystem is not applicable to output streams.
 		$output = fopen( 'php://output', 'w' );
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv -- writing to php://output stream for CSV download; WP_Filesystem not applicable.
 		fputcsv( $output, [
 			'Date', 'Name', 'Email', 'Postcode', 'Subject', 'MP', 'House',
 			'Status', 'Override', 'Contact Quality', 'Adapter', 'Error',
@@ -913,6 +915,7 @@ class SendToMP_Settings {
 			] );
 
 			foreach ( $logs['items'] as $log ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv -- writing to php://output stream for CSV download; WP_Filesystem not applicable.
 				fputcsv( $output, array_map( [ $this, 'csv_safe' ], [
 					$log->created_at,
 					$log->constituent_name,
