@@ -102,6 +102,7 @@ class SendToMP_Logger {
 			'%s', // created_at
 		];
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- direct insert required for plugin submission log table.
 		$result = $wpdb->insert( self::get_table_name(), $data, $formats );
 
 		if ( false === $result ) {
@@ -199,11 +200,10 @@ class SendToMP_Logger {
 		// Get total count.
 		$count_sql = "SELECT COUNT(*) FROM {$table} {$where_sql}";
 		if ( ! empty( $values ) ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $where_sql built from hardcoded clauses above.
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- $count_sql built from trusted internal table name and hardcoded WHERE clauses; direct query required for plugin tables.
 			$total = (int) $wpdb->get_var( $wpdb->prepare( $count_sql, $values ) );
 		} else {
-			// No user input in query — safe to execute directly.
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- no user input in query; direct query required for plugin tables.
 			$total = (int) $wpdb->get_var( $count_sql );
 		}
 

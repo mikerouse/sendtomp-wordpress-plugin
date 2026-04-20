@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- template-scoped variables used only in this included view.
 $smtp_plugin = ( new SendToMP_Mailer() )->detect_smtp_plugin();
 $tier        = SendToMP_License::get_tier();
 $is_pro      = SendToMP_License::TIER_PRO === $tier;

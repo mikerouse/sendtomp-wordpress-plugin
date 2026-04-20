@@ -301,10 +301,12 @@ class SendToMP_Confirmation {
 	 * @return void
 	 */
 	public function handle_confirmation_request(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- token itself is a signed random value acting as capability; full nonce is verified on POST via wp_verify_nonce() below.
 		if ( ! isset( $_GET['sendtomp_confirm'] ) ) {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- see above; token is validated against DB record.
 		$token = sanitize_text_field( wp_unslash( $_GET['sendtomp_confirm'] ) );
 
 		if ( empty( $token ) ) {
@@ -428,6 +430,7 @@ class SendToMP_Confirmation {
 		$message_body    = isset( $submission['message_body'] ) ? esc_html( $submission['message_body'] ) : '';
 		$site_name       = esc_html( get_bloginfo( 'name' ) );
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- token presence already validated by caller; render-only context uses token to build nonce action.
 		$token      = sanitize_text_field( wp_unslash( $_GET['sendtomp_confirm'] ) );
 		$form_action = esc_url( add_query_arg( [ 'sendtomp_confirm' => $token ], home_url( '/' ) ) );
 		$nonce_action = 'sendtomp_confirm_' . $token;

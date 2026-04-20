@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- template-scoped variables used only in this included view.
 $overrides = SendToMP_Overrides::get_all();
 $can_override = sendtomp()->can( 'local_overrides' );
 
