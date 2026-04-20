@@ -52,7 +52,21 @@ jQuery( function( $ ) {
 	}
 
 	// Initialise on any matching inputs.
+	// The .sendtomp-postcode class may be applied directly to an <input>
+	// or (by Gravity Forms) to the wrapping field container — in the latter
+	// case we find the first text/generic input inside it.
 	$( '.sendtomp-postcode, [data-sendtomp-postcode]' ).each( function() {
-		initPostcodeLookup( $( this ) );
+		var $el    = $( this );
+		var $input = $el.is( 'input' )
+			? $el
+			: $el.find( 'input[type="text"], input:not([type])' ).first();
+
+		if ( $input.length ) {
+			// Give browsers a hint so autofill recognises this as a postcode.
+			if ( ! $input.attr( 'autocomplete' ) ) {
+				$input.attr( 'autocomplete', 'postal-code' );
+			}
+			initPostcodeLookup( $input );
+		}
 	} );
 } );

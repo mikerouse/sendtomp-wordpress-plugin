@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.9
+Stable tag: 1.4.10
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -98,6 +98,10 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 2. Delivery log — track every submission with status, timestamps, and MP details
 
 == Changelog ==
+
+= 1.4.10 =
+* Fix live MP preview not appearing — Gravity Forms attaches the CSS class to the field wrapper rather than the input, so the lookup script was binding to the wrong element. Script now descends into the wrapper to find the text input.
+* Set autocomplete="postal-code" on postcode inputs so browsers offer sensible address autofill.
 
 = 1.4.9 =
 * New "Show Live MP Preview" setting on the General tab — toggle on to reveal the matched MP's name and constituency under the postcode field as visitors type
@@ -199,6 +203,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.4.10 =
+Fixes the live MP preview on Gravity Forms postcode fields.
 
 = 1.4.9 =
 Adds a site-wide toggle for the live MP preview on forms — no per-field CSS class required.
