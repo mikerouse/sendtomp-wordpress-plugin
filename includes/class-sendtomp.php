@@ -195,6 +195,9 @@ class SendToMP {
 		if ( ! wp_next_scheduled( 'sendtomp_license_check' ) ) {
 			wp_schedule_event( time(), 'daily', 'sendtomp_license_check' );
 		}
+
+		// Flag a redirect to the Status tab so the user sees what's set up.
+		set_transient( 'sendtomp_activation_redirect', 1, 30 );
 	}
 
 	public static function deactivate() {

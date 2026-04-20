@@ -1546,12 +1546,12 @@ TEXT;
 	 */
 	public function get_current_tab(): string {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
+		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'status';
 
-		$valid_tabs = [ 'general', 'email', 'delivery', 'confirmation', 'rate-limits', 'overrides', 'webhook', 'license', 'log' ];
+		$valid_tabs = [ 'status', 'general', 'email', 'delivery', 'confirmation', 'rate-limits', 'overrides', 'webhook', 'license', 'log' ];
 
 		if ( ! in_array( $tab, $valid_tabs, true ) ) {
-			$tab = 'general';
+			$tab = 'status';
 		}
 
 		return $tab;

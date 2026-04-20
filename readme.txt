@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.3.3
+Stable tag: 1.4.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,13 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Changelog ==
 
+= 1.4.0 =
+* New Status dashboard — see at a glance which form plugins are installed, whether SMTP is set up, your current plan, and activity totals
+* Plugin activation now redirects to the Status tab so first-time users know what to do next
+* New dismissible notice appears if no supported form plugin is active, with a "Don't remind me again" option
+* One-click Install/Activate buttons for free form plugins available on WordPress.org (WPForms Lite, Contact Form 7)
+* Gravity Forms card includes affiliate disclosure text ready for when the link is configured
+
 = 1.3.3 =
 * Removed Update URI header (not permitted on wp.org-hosted plugins)
 * Updated "Tested up to" to WordPress 6.9
@@ -151,6 +158,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Adds a new Status dashboard that shows which form plugins and SMTP providers are set up, so you know what's needed to start sending messages.
 
 = 1.3.3 =
 Fixes WordPress.org automated scan errors — removed Update URI header, updated tested-up-to version.

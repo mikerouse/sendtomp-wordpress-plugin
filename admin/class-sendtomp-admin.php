@@ -21,8 +21,56 @@ class SendToMP_Admin {
 		add_action( 'admin_menu', [ $this, 'add_menu_pages' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices', [ $this, 'render_notices' ] );
+		add_action( 'admin_init', [ $this, 'maybe_redirect_after_activation' ] );
+		add_action( 'admin_post_sendtomp_dismiss_form_notice', [ $this, 'handle_dismiss_form_notice' ] );
 
 		$this->settings = new SendToMP_Settings();
+	}
+
+	/**
+	 * Redirect to the Status tab after plugin activation so users see
+	 * what's set up and what they need to do next.
+	 *
+	 * @return void
+	 */
+	public function maybe_redirect_after_activation(): void {
+		if ( ! get_transient( 'sendtomp_activation_redirect' ) ) {
+			return;
+		}
+
+		// Don't redirect during bulk activation or AJAX.
+		if ( isset( $_GET['activate-multi'] ) || wp_doing_ajax() ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL parameter from WP core plugin list.
+			delete_transient( 'sendtomp_activation_redirect' );
+			return;
+		}
+
+		delete_transient( 'sendtomp_activation_redirect' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=sendtomp&tab=status' ) );
+		exit;
+	}
+
+	/**
+	 * Handle the "Don't remind me again" dismissal for the form-missing notice.
+	 *
+	 * @return void
+	 */
+	public function handle_dismiss_form_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do that.', 'sendtomp' ) );
+		}
+
+		check_admin_referer( 'sendtomp_dismiss_form_notice' );
+
+		update_user_meta( get_current_user_id(), 'sendtomp_form_notice_dismissed', SENDTOMP_VERSION );
+
+		$redirect = wp_get_referer() ?: admin_url( 'admin.php?page=sendtomp&tab=status' );
+		wp_safe_redirect( $redirect );
+		exit;
 	}
 
 	/**
@@ -146,6 +194,9 @@ class SendToMP_Admin {
 			return;
 		}
 
+		// Missing form plugin — the most important notice; shown first.
+		$this->maybe_render_form_missing_notice();
+
 		// Check for SMTP plugin.
 		$mailer = new SendToMP_Mailer();
 		if ( ! $mailer->detect_smtp_plugin() ) {
@@ -169,6 +220,8 @@ class SendToMP_Admin {
 			echo '</p></div>';
 		}
 
+		// (continues below — existing licence warnings)
+
 		// Free tier remaining messages warning.
 		if ( SendToMP_License::TIER_FREE === SendToMP_License::get_tier() ) {
 			$remaining = SendToMP_License::get_remaining();
@@ -184,5 +237,40 @@ class SendToMP_Admin {
 				echo '</p></div>';
 			}
 		}
+	}
+
+	/**
+	 * Render a prominent notice when no supported form plugin is active.
+	 *
+	 * Suppressed once the user chooses "Don't remind me again" for the
+	 * current plugin version. A major version bump re-enables the notice.
+	 *
+	 * @return void
+	 */
+	private function maybe_render_form_missing_notice(): void {
+		if ( SendToMP_Status::has_active_form_plugin() ) {
+			return;
+		}
+
+		$dismissed_version = get_user_meta( get_current_user_id(), 'sendtomp_form_notice_dismissed', true );
+		if ( $dismissed_version && version_compare( (string) $dismissed_version, SENDTOMP_VERSION, '>=' ) ) {
+			return;
+		}
+
+		$status_url        = admin_url( 'admin.php?page=sendtomp&tab=status' );
+		$dismiss_permanent = wp_nonce_url(
+			admin_url( 'admin-post.php?action=sendtomp_dismiss_form_notice' ),
+			'sendtomp_dismiss_form_notice'
+		);
+
+		echo '<div class="notice notice-warning is-dismissible sendtomp-notice-form-missing">';
+		echo '<p><strong>' . esc_html__( 'SendToMP needs a form plugin to send messages.', 'sendtomp' ) . '</strong> ';
+		echo esc_html__( 'Install and activate Gravity Forms (works on the Free plan), WPForms, or Contact Form 7 to get started.', 'sendtomp' );
+		echo '</p>';
+		echo '<p class="sendtomp-notice-actions">';
+		echo '<a class="button button-primary" href="' . esc_url( $status_url ) . '">' . esc_html__( 'View status', 'sendtomp' ) . '</a> ';
+		echo '<a class="button" href="' . esc_url( $dismiss_permanent ) . '">' . esc_html__( "Don't remind me again", 'sendtomp' ) . '</a>';
+		echo '</p>';
+		echo '</div>';
 	}
 }

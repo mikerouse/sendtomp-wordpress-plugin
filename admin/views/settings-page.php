@@ -3,8 +3,9 @@
 <?php
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- template-scoped variables used only in this included view.
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only URL filter parameter, no state change.
-$current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'general';
+$current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'status';
 $tabs = array(
+	'status'       => __( 'Status', 'sendtomp' ),
 	'general'      => __( 'General', 'sendtomp' ),
 	'email'        => __( 'Email', 'sendtomp' ),
 	'delivery'     => __( 'Email Delivery', 'sendtomp' ),
@@ -56,7 +57,9 @@ $tabs = array(
 				</div>
 			<?php endif; ?>
 
-			<?php if ($current_tab === 'delivery') : ?>
+			<?php if ($current_tab === 'status') : ?>
+				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/status-page.php'; ?>
+			<?php elseif ($current_tab === 'delivery') : ?>
 				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/delivery-page.php'; ?>
 			<?php elseif ($current_tab === 'overrides') : ?>
 				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/overrides-page.php'; ?>

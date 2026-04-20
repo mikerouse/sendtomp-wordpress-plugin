@@ -82,7 +82,7 @@
 	margin-bottom: 4px;
 }
 
-/* Status colours */
+/* Status colours (log filter chips) */
 .sendtomp-status-confirmed {
 	color: #00a32a;
 }
@@ -97,4 +97,392 @@
 
 .sendtomp-status-rate_limited {
 	color: #996800;
+}
+
+/* ----------------------------------------------------------------
+ * Status dashboard — parliamentary aesthetic.
+ * Palette: deep Commons green, muted Lords red, parchment tone.
+ * ---------------------------------------------------------------- */
+
+.sendtomp-status {
+	max-width: 1200px;
+	margin: 20px 0 40px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+	color: #1f1d1a;
+}
+
+/* Banner (missing form plugin) */
+.sendtomp-status-banner {
+	display: flex;
+	gap: 20px;
+	align-items: flex-start;
+	padding: 20px 24px;
+	margin-bottom: 28px;
+	background: #fdf6e3;
+	border: 1px solid #d9c88a;
+	border-left: 5px solid #8a6d00;
+	border-radius: 2px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.sendtomp-banner-icon {
+	flex-shrink: 0;
+}
+
+.sendtomp-banner-icon .dashicons {
+	font-size: 28px;
+	width: 28px;
+	height: 28px;
+	color: #8a6d00;
+}
+
+.sendtomp-banner-body h2 {
+	margin: 0 0 6px;
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 20px;
+	font-weight: 600;
+	color: #1f1d1a;
+}
+
+.sendtomp-banner-body p {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.6;
+	color: #4a463e;
+}
+
+/* Grid of cards */
+.sendtomp-status-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+	gap: 24px;
+}
+
+/* Cards */
+.sendtomp-status-card {
+	background: #ffffff;
+	border: 1px solid #e3dfd5;
+	border-radius: 3px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+	overflow: hidden;
+}
+
+.sendtomp-card-header {
+	padding: 20px 24px 12px;
+	border-bottom: 1px solid #ede9df;
+	background: linear-gradient(to bottom, #fafaf7, #ffffff);
+}
+
+.sendtomp-card-header h2 {
+	margin: 0 0 4px;
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 18px;
+	font-weight: 600;
+	color: #1f1d1a;
+	letter-spacing: 0.01em;
+}
+
+.sendtomp-card-subtitle {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: #6b6659;
+}
+
+/* Status list rows */
+.sendtomp-status-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.sendtomp-status-item {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	gap: 16px;
+	align-items: start;
+	padding: 18px 24px;
+	border-bottom: 1px solid #f2efe7;
+	position: relative;
+}
+
+.sendtomp-status-item:last-child {
+	border-bottom: none;
+}
+
+/* Item icon */
+.sendtomp-item-icon {
+	padding-top: 2px;
+}
+
+.sendtomp-item-icon .dashicons {
+	font-size: 22px;
+	width: 22px;
+	height: 22px;
+}
+
+.state-active .sendtomp-item-icon .dashicons {
+	color: #2e6e3e;
+}
+
+.state-installed .sendtomp-item-icon .dashicons {
+	color: #a67600;
+}
+
+.state-not_installed .sendtomp-item-icon .dashicons {
+	color: #8c8679;
+}
+
+/* Item body */
+.sendtomp-item-body {
+	min-width: 0;
+}
+
+.sendtomp-item-title {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-bottom: 4px;
+}
+
+.sendtomp-item-title strong {
+	font-size: 15px;
+	color: #1f1d1a;
+	font-weight: 600;
+}
+
+.sendtomp-item-meta {
+	font-size: 12px;
+	color: #6b6659;
+	margin-bottom: 8px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-weight: 500;
+}
+
+.state-active .sendtomp-item-meta {
+	color: #2e6e3e;
+}
+
+.state-installed .sendtomp-item-meta {
+	color: #a67600;
+}
+
+.sendtomp-item-description {
+	margin: 0 0 4px;
+	font-size: 13px;
+	line-height: 1.55;
+	color: #4a463e;
+}
+
+.sendtomp-item-footnote {
+	margin: 6px 0 0;
+	font-size: 12px;
+	color: #7a7566;
+	font-style: italic;
+}
+
+.sendtomp-item-disclosure {
+	grid-column: 1 / -1;
+	margin-top: 10px;
+	padding: 8px 12px;
+	background: #faf7ee;
+	border-left: 3px solid #c9b037;
+	font-size: 11px;
+	line-height: 1.5;
+	color: #5a5547;
+}
+
+.sendtomp-item-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	align-items: flex-end;
+}
+
+/* Tier badges */
+.sendtomp-tier-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	border-radius: 10px;
+	border: 1px solid transparent;
+}
+
+.sendtomp-tier-free {
+	background: #ecf4ed;
+	color: #2e6e3e;
+	border-color: #c5ddca;
+}
+
+.sendtomp-tier-plus {
+	background: #f0f2f7;
+	color: #334070;
+	border-color: #c6cde0;
+}
+
+.sendtomp-tier-pro {
+	background: #f7f1ed;
+	color: #6b3b1c;
+	border-color: #e0cbbc;
+}
+
+/* State chip */
+.sendtomp-state-chip {
+	display: inline-block;
+	padding: 3px 10px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	border-radius: 2px;
+}
+
+.sendtomp-chip-ok {
+	background: #e8f1ea;
+	color: #2e6e3e;
+	border: 1px solid #c5ddca;
+}
+
+/* Plan summary block */
+.sendtomp-plan-summary {
+	padding: 18px 24px 22px;
+}
+
+.sendtomp-plan-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px 0;
+	border-bottom: 1px solid #f2efe7;
+}
+
+.sendtomp-plan-row:last-of-type {
+	border-bottom: none;
+}
+
+.sendtomp-plan-label {
+	font-size: 13px;
+	color: #6b6659;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-weight: 500;
+}
+
+.sendtomp-plan-value {
+	font-size: 14px;
+	color: #1f1d1a;
+	font-weight: 600;
+}
+
+.sendtomp-progress {
+	height: 6px;
+	margin: 8px 0 6px;
+	background: #f2efe7;
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.sendtomp-progress-bar {
+	height: 100%;
+	background: linear-gradient(to right, #2e6e3e, #3d8650);
+	border-radius: 3px;
+	transition: width 0.3s ease;
+}
+
+.sendtomp-plan-footnote {
+	margin: 0 0 14px;
+	font-size: 12px;
+	color: #7a7566;
+	font-style: italic;
+}
+
+.sendtomp-plan-actions {
+	display: flex;
+	gap: 10px;
+	margin-top: 14px;
+	flex-wrap: wrap;
+}
+
+/* Delivery log stats */
+.sendtomp-log-stats {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 1px;
+	background: #ede9df;
+	padding: 1px;
+}
+
+.sendtomp-log-stat {
+	background: #ffffff;
+	padding: 18px 22px;
+	text-align: center;
+}
+
+.sendtomp-log-value {
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 26px;
+	font-weight: 600;
+	color: #1f1d1a;
+	line-height: 1;
+	margin-bottom: 4px;
+}
+
+.sendtomp-log-label {
+	font-size: 11px;
+	color: #6b6659;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	font-weight: 500;
+}
+
+.sendtomp-log-actions {
+	padding: 16px 24px;
+	border-top: 1px solid #ede9df;
+	background: #fafaf7;
+}
+
+/* Tab text colour tweak when Status tab is active — subtle parliamentary green */
+.nav-tab.nav-tab-active[href*="tab=status"],
+.nav-tab-active[href*="page=sendtomp&tab="]:first-child {
+	box-shadow: inset 0 -3px 0 #2e6e3e;
+}
+
+/* Form-plugin-missing admin notice */
+.sendtomp-notice-form-missing {
+	border-left-color: #8a6d00 !important;
+}
+
+.sendtomp-notice-form-missing p {
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.sendtomp-notice-form-missing .sendtomp-notice-actions {
+	margin-top: 10px;
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+/* Responsive */
+@media screen and (max-width: 960px) {
+	.sendtomp-status-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.sendtomp-status-item {
+		grid-template-columns: auto 1fr;
+	}
+
+	.sendtomp-item-actions {
+		grid-column: 1 / -1;
+		flex-direction: row;
+		align-items: flex-start;
+		margin-top: 4px;
+	}
 }
