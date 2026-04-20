@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.11
+Stable tag: 1.4.12
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -94,10 +94,15 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Screenshots ==
 
-1. Settings page — configure your email templates, rate limits, and form field mappings
-2. Delivery log — track every submission with status, timestamps, and MP details
+1. Looking up an MP by postcode within a Gravity Form 
+2. Settings page — configure your email templates, rate limits, and form field mappings
+3. Delivery log — track every submission with status, timestamps, and MP details
+4. Configuring a Gravity Form feed to send submissions to your visitor's MP
 
 == Changelog ==
+
+= 1.4.12 =
+* Refreshed WordPress.org listing screenshots — added a shot of the live MP postcode lookup inside a Gravity Form and a shot of the Gravity Forms feed configuration screen. No functional changes.
 
 = 1.4.11 =
 * Live MP preview now shows the MP's official parliamentary portrait alongside their name and constituency — a richer at-a-glance check that the right MP has been matched before submission. Image is sourced from the Parliament Members API and shown only when served over HTTPS from that host.
