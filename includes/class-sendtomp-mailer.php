@@ -53,6 +53,14 @@ class SendToMP_Mailer {
 
 		$to = $submission->resolved_member['delivery_email'];
 
+		// If the body contains HTML tags (e.g. from the feed's WYSIWYG
+		// template), send as HTML — otherwise keep plain text for maximum
+		// deliverability and readability in the MP's inbox.
+		if ( $this->body_contains_html( $body ) ) {
+			$headers[] = 'Content-Type: text/html; charset=UTF-8';
+			$body      = wpautop( $body );
+		}
+
 		$sent = wp_mail( $to, $subject, $body, $headers );
 
 		if ( ! $sent ) {
@@ -76,12 +84,17 @@ class SendToMP_Mailer {
 		$expiry_hours     = sendtomp()->get_setting( 'confirmation_expiry' );
 
 		$location_label = ! empty( $mp_constituency ) ? " ({$mp_constituency})" : '';
+		// Confirmation email is always plain text — strip any HTML that
+		// may be present in the message body (from a WYSIWYG template)
+		// so the preview reads cleanly.
+		$preview_body = wp_strip_all_tags( (string) $submission->message_body, true );
+
 		$body  = "You recently submitted a message to {$mp_name}{$location_label} via " . get_bloginfo( 'name' ) . ".\n\n";
 		$body .= "Please confirm you want to send this message by clicking the link below:\n\n";
 		$body .= $confirmation_url . "\n\n";
 		$body .= "--- Your message preview ---\n\n";
 		$body .= "Subject: {$submission->message_subject}\n\n";
-		$body .= $submission->message_body . "\n\n";
+		$body .= $preview_body . "\n\n";
 		$body .= "---\n\n";
 		$body .= "This link will expire in {$expiry_hours} hours.\n\n";
 		$body .= "If you did not submit this message, you can safely ignore this email.\n";
@@ -193,5 +206,20 @@ class SendToMP_Mailer {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Detect whether a string contains HTML tags that should trigger
+	 * HTML email rendering.
+	 *
+	 * Uses a conservative check — only tags commonly produced by the
+	 * TinyMCE editor flip the result to true. Freeform `<` in a body
+	 * (e.g. "5 < 10") is left as plain text.
+	 *
+	 * @param string $content The email body to inspect.
+	 * @return bool
+	 */
+	private function body_contains_html( string $content ): bool {
+		return (bool) preg_match( '/<(p|br|div|span|strong|em|b|i|u|ul|ol|li|a|h[1-6]|blockquote)\b[^>]*>/i', $content );
 	}
 }

@@ -304,12 +304,11 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 					],
 					[
 						'label'       => esc_html__( 'Message Body', 'sendtomp' ),
-						'type'        => 'textarea',
+						'type'        => 'visual_editor',
 						'name'        => 'message_body_template',
-						'class'       => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
 						'required'    => true,
-						'tooltip'     => esc_html__( 'The body of the email sent to the MP. Mix plain text with merge tags to build the message.', 'sendtomp' ),
-						'description' => esc_html__( 'Use merge tags to insert form field values. Example: "Dear {member_name}, {Your message} Yours sincerely, {Name}". If you just want to pass through the user\'s typed message, use only a single merge tag like {Your message}.', 'sendtomp' ),
+						'tooltip'     => esc_html__( 'The body of the email sent to the MP. Mix plain text, formatting, and merge tags.', 'sendtomp' ),
+						'description' => esc_html__( 'Use merge tags (the Gravity Forms icon at the top of the editor) to insert form field values. Example: "Dear {member_name}, {Your message}. Yours sincerely, {Name}". Formatting (bold, italics, lists, links) is preserved when the email is sent to the MP.', 'sendtomp' ),
 					],
 				],
 			],
@@ -405,5 +404,35 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	 */
 	public function get_column_value_target_house( $feed ) {
 		return esc_html( ucfirst( (string) rgar( $feed['meta'], 'target_house', 'commons' ) ) );
+	}
+
+	/**
+	 * Render a WYSIWYG (wp_editor) input as a feed setting field.
+	 *
+	 * Used for the Message Body template so campaign owners can format the
+	 * letter to the MP (bold, italics, bullet points, links) without having
+	 * to hand-write HTML. The framework handles the label, tooltip, and
+	 * required marker via single_setting_row; this method renders just the
+	 * input portion.
+	 *
+	 * @param array $field Field definition from feed_settings_fields().
+	 * @return void
+	 */
+	public function settings_visual_editor( $field ): void {
+		$field_name = (string) rgar( $field, 'name', '' );
+		$value      = (string) $this->get_setting( $field_name );
+		$editor_id  = '_gaddon_setting_' . $field_name;
+
+		wp_editor(
+			$value,
+			$editor_id,
+			[
+				'textarea_name' => '_gaddon_setting_' . $field_name,
+				'textarea_rows' => 12,
+				'media_buttons' => false,
+				'teeny'         => true,
+				'quicktags'     => true,
+			]
+		);
 	}
 }
