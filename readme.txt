@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.2
+Stable tag: 1.4.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,12 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 
 == Changelog ==
 
+= 1.4.3 =
+* Message Subject and Message Body in the Gravity Forms feed are now editable templates with full merge-tag support, rather than rigid field-to-field mappings
+* Campaign owners can now write a template letter like "Dear {member_name}, ... {Your message}" — the form user's typed message merges in alongside any fixed text
+* Full Address field is clearly marked optional with a helper explaining that postcode alone is sufficient for MP lookup
+* Feed settings reorganised into Constituent Fields / Message Content / Conditional Logic sections for clarity
+
 = 1.4.2 =
 * Fix Gravity Forms adapter not appearing under Form Settings — registration now handles the case where gform_loaded has already fired (hook priority ordering)
 
@@ -166,6 +172,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.4.3 =
+Major improvement to the Gravity Forms feed: Message Subject and Body are now editable templates with merge-tag support. Existing feeds will need the subject and body reconfigured.
 
 = 1.4.2 =
 Fixes the SendToMP tab not appearing in Gravity Forms form settings.

@@ -246,12 +246,13 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 					],
 				],
 			],
-			// Section 2: Field mapping.
+			// Section 2: Required field mapping — constituent identification.
 			[
-				'title'  => esc_html__( 'Field Mapping', 'sendtomp' ),
-				'fields' => [
+				'title'       => esc_html__( 'Constituent Fields', 'sendtomp' ),
+				'description' => esc_html__( 'Map the form fields that identify the constituent. Postcode is used to look up their MP via the Parliament API.', 'sendtomp' ),
+				'fields'      => [
 					[
-						'label'      => esc_html__( 'Map Fields', 'sendtomp' ),
+						'label'      => esc_html__( 'Required', 'sendtomp' ),
 						'type'       => 'field_map',
 						'name'       => 'fieldMap',
 						'field_map'  => [
@@ -271,27 +272,48 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 								'label'    => esc_html__( 'Postcode', 'sendtomp' ),
 								'required' => true,
 							],
+						],
+					],
+					[
+						'label'      => esc_html__( 'Optional', 'sendtomp' ),
+						'type'       => 'field_map',
+						'name'       => 'fieldMapOptional',
+						'field_map'  => [
 							[
 								'name'     => 'constituent_address',
 								'label'    => esc_html__( 'Full Address', 'sendtomp' ),
 								'required' => false,
-							],
-							[
-								'name'     => 'message_subject',
-								'label'    => esc_html__( 'Message Subject', 'sendtomp' ),
-								'required' => false,
-							],
-							[
-								'name'       => 'message_body',
-								'label'      => esc_html__( 'Message Body', 'sendtomp' ),
-								'required'   => true,
-								'field_type' => [ 'textarea', 'text', 'hidden', 'post_body' ],
+								'tooltip'  => esc_html__( 'You do not need to provide a full address — a postcode alone is enough to route the message to the constituent\'s MP. If your form does collect a full address and you want it included in the message to the MP, select that field here.', 'sendtomp' ),
 							],
 						],
 					],
 				],
 			],
-			// Section 3: Conditional logic.
+			// Section 3: Message content — templates with merge tag support.
+			[
+				'title'       => esc_html__( 'Message Content', 'sendtomp' ),
+				'description' => esc_html__( 'Build the subject line and body sent to the MP. Click the icon beside each field to insert form field values as merge tags.', 'sendtomp' ),
+				'fields'      => [
+					[
+						'label'       => esc_html__( 'Message Subject', 'sendtomp' ),
+						'type'        => 'text',
+						'name'        => 'message_subject_template',
+						'class'       => 'merge-tag-support mt-position-right mt-hide_all_fields',
+						'tooltip'     => esc_html__( 'The subject line of the email sent to the MP. Use merge tags (the icon on the right) to insert form field values so each message is unique.', 'sendtomp' ),
+						'description' => esc_html__( 'Example: "A message from {Name} about judicial anonymity". Leave blank to use the default template set under SendToMP → Email.', 'sendtomp' ),
+					],
+					[
+						'label'       => esc_html__( 'Message Body', 'sendtomp' ),
+						'type'        => 'textarea',
+						'name'        => 'message_body_template',
+						'class'       => 'medium merge-tag-support mt-position-right mt-hide_all_fields',
+						'required'    => true,
+						'tooltip'     => esc_html__( 'The body of the email sent to the MP. Mix plain text with merge tags to build the message.', 'sendtomp' ),
+						'description' => esc_html__( 'Use merge tags to insert form field values. Example: "Dear {member_name}, {Your message} Yours sincerely, {Name}". If you just want to pass through the user\'s typed message, use only a single merge tag like {Your message}.', 'sendtomp' ),
+					],
+				],
+			],
+			// Section 4: Conditional logic.
 			[
 				'title'  => esc_html__( 'Conditional Logic', 'sendtomp' ),
 				'fields' => [
@@ -317,14 +339,27 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	 * @return void
 	 */
 	public function process_feed( $feed, $entry, $form ) {
-		// Extract mapped field values.
+		$subject_template = (string) rgar( $feed['meta'], 'message_subject_template', '' );
+		$body_template    = (string) rgar( $feed['meta'], 'message_body_template', '' );
+
+		$resolve_template = function ( $template ) use ( $form, $entry ) {
+			if ( '' === $template ) {
+				return '';
+			}
+			if ( class_exists( 'GFCommon' ) && method_exists( 'GFCommon', 'replace_variables' ) ) {
+				return GFCommon::replace_variables( $template, $form, $entry, false, false, false, 'text' );
+			}
+			return $template;
+		};
+
+		// Extract mapped field values (constituent identification) plus resolved templates (message content).
 		$mapped_data = [
 			'constituent_name'     => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_name' ) ) ),
 			'constituent_email'    => sanitize_email( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_email' ) ) ),
 			'constituent_postcode' => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_postcode' ) ) ),
-			'constituent_address'  => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_address' ) ) ),
-			'message_subject'      => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_message_subject' ) ) ),
-			'message_body'         => sanitize_textarea_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_message_body' ) ) ),
+			'constituent_address'  => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMapOptional_constituent_address' ) ) ),
+			'message_subject'      => sanitize_text_field( $resolve_template( $subject_template ) ),
+			'message_body'         => sanitize_textarea_field( $resolve_template( $body_template ) ),
 		];
 
 		// Build the submission with consistent metadata keys.
