@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.19
+Stable tag: 1.5.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -100,6 +100,11 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 4. Configuring a Gravity Form feed to send submissions to your visitor's MP
 
 == Changelog ==
+
+= 1.5.0 =
+* **New: "Find My MP" custom Gravity Forms field.** Site owners can now drag a first-class "Find My MP" field straight from the Gravity Forms field picker (Advanced Fields group) onto any form. The field renders a UK postcode input pre-wired to the SendToMP lookup — visitors see the Find my MP button and MP portrait preview immediately, without any CSS class or feed mapping configuration. Dramatically simpler to set up than the previous "add a text field, then go to the feed, then map it to constituent_postcode" flow, especially for non-technical site owners.
+* When a SendToMP feed doesn't have a postcode field mapped but the form contains a "Find My MP" field, the plugin now auto-uses that field as the postcode source at submission time. Existing forms that still use a plain text field + feed mapping continue to work unchanged.
+* Minor: the form-editor warning introduced in 1.4.19 (postcode field without a feed) stays in place as a safety net for forms that still take the legacy mapping path.
 
 = 1.4.19 =
 * Rename the "Show Live MP Preview" setting to "Enable Find My MP Button for Post Code" so its label matches the button it actually controls.
@@ -233,6 +238,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.5.0 =
+Adds a drag-and-drop "Find My MP" field to the Gravity Forms field picker — much easier to set up than the previous text-field-plus-feed-mapping flow.
 
 = 1.4.10 =
 Fixes the live MP preview on Gravity Forms postcode fields.

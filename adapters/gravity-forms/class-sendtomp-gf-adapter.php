@@ -81,43 +81,81 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 
 		if ( is_admin() ) {
 			add_action( 'admin_print_footer_scripts', [ $this, 'print_rich_editor_tag_data' ], 20 );
+			add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_form_editor_assets' ] );
 		}
 	}
 
 	/**
-	 * If the Show Live MP Preview setting is on, attach the
-	 * `sendtomp-postcode` CSS class to the form field mapped as the
-	 * constituent postcode in any active SendToMP feed for this form.
+	 * Enqueue the SendToMP field-picker icon CSS on the GF form editor.
 	 *
-	 * The frontend postcode-lookup JS picks up the class and renders
-	 * the live MP preview beneath the field. This removes the need
-	 * for site owners to hand-edit CSS Class Name in the field editor.
+	 * GF's form list and the form editor both live under page=gf_edit_forms;
+	 * the editor is distinguished by the presence of an `id` query arg.
+	 * Loading the CSS on the list page is harmless but unnecessary — gate
+	 * on the editor so we don't inject unneeded bytes.
+	 *
+	 * @return void
+	 */
+	public function enqueue_form_editor_assets() {
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 'gf_edit_forms' !== $page ) {
+			return;
+		}
+		if ( ! isset( $_GET['id'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+
+		wp_enqueue_style(
+			'sendtomp-gf-editor',
+			SENDTOMP_PLUGIN_URL . 'assets/css/sendtomp-gf-editor.css',
+			[],
+			SENDTOMP_VERSION
+		);
+	}
+
+	/**
+	 * Attach the `sendtomp-postcode` CSS class to any form field that
+	 * should trigger the frontend Find-My-MP lookup (button + portrait
+	 * preview).
+	 *
+	 * Two paths:
+	 *   1. Any field of type `sendtomp_mp_lookup` — tagged unconditionally.
+	 *      This is the v1.5.0 custom field; it works out of the box
+	 *      regardless of whether a feed is configured yet.
+	 *   2. The postcode field mapped in an active feed — tagged only when
+	 *      the "Enable Find My MP Button for Post Code" setting is on.
+	 *      This preserves pre-1.5.0 behaviour for forms that use a plain
+	 *      text postcode field plus a feed mapping.
 	 *
 	 * @param array $form The Gravity Forms form object.
 	 * @return array The (possibly modified) form.
 	 */
 	public function maybe_add_postcode_preview_class( $form ) {
-		if ( ! function_exists( 'sendtomp' ) || ! sendtomp()->get_setting( 'show_mp_preview' ) ) {
-			return $form;
-		}
-
 		if ( empty( $form['id'] ) || empty( $form['fields'] ) ) {
 			return $form;
 		}
 
-		$feeds = $this->get_feeds( $form['id'] );
-		if ( empty( $feeds ) ) {
-			return $form;
+		$postcode_field_ids = [];
+
+		// Path 1: custom MP Lookup field — always on.
+		foreach ( $form['fields'] as $field ) {
+			if ( isset( $field->type ) && 'sendtomp_mp_lookup' === $field->type ) {
+				$postcode_field_ids[ (string) $field->id ] = true;
+			}
 		}
 
-		$postcode_field_ids = [];
-		foreach ( $feeds as $feed ) {
-			if ( empty( $feed['is_active'] ) ) {
-				continue;
-			}
-			$id = rgar( $feed['meta'], 'fieldMap_constituent_postcode' );
-			if ( '' !== (string) $id ) {
-				$postcode_field_ids[ (string) $id ] = true;
+		// Path 2: mapped postcode field via feed — gated by the legacy setting.
+		if ( function_exists( 'sendtomp' ) && sendtomp()->get_setting( 'show_mp_preview' ) ) {
+			$feeds = $this->get_feeds( $form['id'] );
+			if ( ! empty( $feeds ) ) {
+				foreach ( $feeds as $feed ) {
+					if ( empty( $feed['is_active'] ) ) {
+						continue;
+					}
+					$id = rgar( $feed['meta'], 'fieldMap_constituent_postcode' );
+					if ( '' !== (string) $id ) {
+						$postcode_field_ids[ (string) $id ] = true;
+					}
+				}
 			}
 		}
 
@@ -555,11 +593,22 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 			return $template;
 		};
 
+		// Postcode source: prefer the feed's explicit mapping; when empty, fall
+		// back to the first SendToMP MP Lookup field on the form (v1.5.0). This
+		// means a form using the custom field works even without a mapping set.
+		$postcode_field_id = rgar( $feed['meta'], 'fieldMap_constituent_postcode' );
+		if ( '' === (string) $postcode_field_id ) {
+			$auto_postcode_id = $this->find_mp_lookup_field_id( $form );
+			if ( $auto_postcode_id ) {
+				$postcode_field_id = (string) $auto_postcode_id;
+			}
+		}
+
 		// Extract mapped field values (constituent identification) plus resolved templates (message content).
 		$mapped_data = [
 			'constituent_name'     => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_name' ) ) ),
 			'constituent_email'    => sanitize_email( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_email' ) ) ),
-			'constituent_postcode' => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMap_constituent_postcode' ) ) ),
+			'constituent_postcode' => sanitize_text_field( $this->get_field_value( $form, $entry, $postcode_field_id ) ),
 			'constituent_address'  => sanitize_text_field( $this->get_field_value( $form, $entry, rgar( $feed['meta'], 'fieldMapOptional_constituent_address' ) ) ),
 			'message_subject'      => sanitize_text_field( $resolve_template( $subject_template ) ),
 			'message_body'         => sanitize_textarea_field( $resolve_template( $body_template ) ),
@@ -608,6 +657,26 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	 */
 	public function get_column_value_target_house( $feed ) {
 		return esc_html( ucfirst( (string) rgar( $feed['meta'], 'target_house', 'commons' ) ) );
+	}
+
+	/**
+	 * Find the ID of the first `sendtomp_mp_lookup` field in a form, if any.
+	 *
+	 * @param array $form Gravity Forms form object.
+	 * @return int|null The field ID, or null when no lookup field is present.
+	 */
+	public function find_mp_lookup_field_id( $form ) {
+		if ( empty( $form['fields'] ) ) {
+			return null;
+		}
+
+		foreach ( $form['fields'] as $field ) {
+			if ( isset( $field->type ) && 'sendtomp_mp_lookup' === $field->type ) {
+				return (int) $field->id;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -680,5 +749,20 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 			};
 		</script>
 		<?php
+	}
+}
+
+/*
+ * Register the custom MP Lookup Gravity Forms field type.
+ *
+ * Runs once when this file is required, which happens during
+ * `gform_loaded` via SendToMP::register_gf_adapter(). Guarded on the
+ * GF classes we need actually being present.
+ */
+if ( class_exists( 'GF_Fields' ) && class_exists( 'GF_Field_Text' ) ) {
+	require_once __DIR__ . '/class-gf-field-sendtomp-mp-lookup.php';
+
+	if ( class_exists( 'SendToMP_GF_Field_MP_Lookup' ) ) {
+		GF_Fields::register( new SendToMP_GF_Field_MP_Lookup() );
 	}
 }
