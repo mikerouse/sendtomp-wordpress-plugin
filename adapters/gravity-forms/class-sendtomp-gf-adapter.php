@@ -81,6 +81,7 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 
 		if ( is_admin() ) {
 			add_action( 'admin_print_footer_scripts', [ $this, 'print_rich_editor_tag_data' ], 20 );
+			add_action( 'admin_notices', [ $this, 'maybe_render_confirmation_handoff_notice' ] );
 		}
 	}
 
@@ -136,6 +137,65 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 		}
 
 		return $form;
+	}
+
+	/**
+	 * Shared HTML body for the post-submission handoff reminder. Rendered
+	 * both inside the feed editor (as a section header block) and on the
+	 * form's Confirmations admin page (as an admin notice).
+	 *
+	 * @return string
+	 */
+	private function render_handoff_notice_html(): string {
+		$lines = [
+			esc_html__( "SendToMP sends your visitor a confirmation email — their message only reaches the MP after they click the link inside it.", 'sendtomp' ),
+			esc_html__( "Gravity Forms' default confirmation says \"Thanks, we'll be in touch shortly\", which is misleading here.", 'sendtomp' ),
+			esc_html__( "Edit this form's Confirmation to tell visitors to check their email for the confirmation link.", 'sendtomp' ),
+		];
+
+		return '<p>' . implode( '</p><p>', $lines ) . '</p>';
+	}
+
+	/**
+	 * Show a one-off admin notice on the form's Confirmations page when
+	 * a SendToMP feed is active on that form, so site owners don't forget
+	 * to update the post-submission message.
+	 *
+	 * TODO (v2): detect whether the active confirmation already mentions
+	 * email / confirmation and suppress the notice if it does. Currently
+	 * we show it unconditionally on the Confirmations tab.
+	 *
+	 * @return void
+	 */
+	public function maybe_render_confirmation_handoff_notice(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only screen check.
+		$page    = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		$view    = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : '';
+		$subview = isset( $_GET['subview'] ) ? sanitize_key( wp_unslash( $_GET['subview'] ) ) : '';
+		$form_id = isset( $_GET['id'] ) ? absint( wp_unslash( $_GET['id'] ) ) : 0;
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		if ( 'gf_edit_forms' !== $page || 'settings' !== $view || 'confirmation' !== $subview || ! $form_id ) {
+			return;
+		}
+
+		$feeds         = $this->get_feeds( $form_id );
+		$has_active_fe = false;
+		foreach ( (array) $feeds as $feed ) {
+			if ( ! empty( $feed['is_active'] ) ) {
+				$has_active_fe = true;
+				break;
+			}
+		}
+		if ( ! $has_active_fe ) {
+			return;
+		}
+
+		echo '<div class="notice notice-info"><h3 style="margin-top:0.75em;">'
+			. esc_html__( 'SendToMP is active on this form', 'sendtomp' )
+			. '</h3>'
+			. wp_kses_post( $this->render_handoff_notice_html() )
+			. '</div>';
 	}
 
 	/**
@@ -301,7 +361,24 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	 * @return array
 	 */
 	public function feed_settings_fields() {
+		// TODO (v2): consider auto-creating a "SendToMP: check your email" GF
+		// Confirmation when a feed is first activated, and flipping it to the
+		// active confirmation. The current implementation is a lightweight
+		// reminder — admin notice + feed-editor header block — that relies on
+		// the site owner configuring their own confirmation. Upgrade if
+		// user feedback shows the reminder is being ignored.
 		return [
+			// Section 0: Post-submission handoff reminder.
+			[
+				'title'  => esc_html__( 'After your visitor hits submit', 'sendtomp' ),
+				'fields' => [
+					[
+						'name' => 'sendtomp_handoff_notice',
+						'type' => 'html',
+						'html' => $this->render_handoff_notice_html(),
+					],
+				],
+			],
 			// Section 1: Core settings.
 			[
 				'title'  => esc_html__( 'Send to MP Settings', 'sendtomp' ),
