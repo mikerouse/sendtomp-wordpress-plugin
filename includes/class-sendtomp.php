@@ -200,8 +200,11 @@ class SendToMP {
 		);
 
 		wp_localize_script( 'sendtomp-postcode-lookup', 'sendtomp_frontend', [
-			'ajax_url' => admin_url( 'admin-ajax.php' ),
-			'nonce'    => wp_create_nonce( 'sendtomp_postcode_lookup' ),
+			'ajax_url'          => admin_url( 'admin-ajax.php' ),
+			'nonce'             => wp_create_nonce( 'sendtomp_postcode_lookup' ),
+			'find_mp_label'     => __( 'Find my MP', 'sendtomp' ),
+			'finding_label'     => __( 'Finding your MP...', 'sendtomp' ),
+			'short_postcode'    => __( 'Please enter a full UK postcode.', 'sendtomp' ),
 		] );
 	}
 

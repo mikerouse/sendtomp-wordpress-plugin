@@ -1,54 +1,124 @@
 /**
  * SendToMP — Frontend Postcode Lookup
  *
- * Shows the constituent's MP name and constituency before form
- * submission. Attaches to any input with class .sendtomp-postcode
- * or data-sendtomp-postcode attribute.
+ * Shows the constituent's MP name, portrait, constituency, and party
+ * before form submission. Two entry points:
+ *   - debounced auto-lookup on `input` / `blur` (unchanged, so power
+ *     users who just type can see the preview without a click)
+ *   - a "Find my MP" button next to the postcode input for users who
+ *     prefer an explicit action (better for screen readers, keyboard
+ *     users, and anyone who doesn't realise a blur triggers the lookup)
+ *
+ * Attaches to any input with class .sendtomp-postcode or
+ * data-sendtomp-postcode attribute. When the class is on a wrapper
+ * (Gravity Forms applies cssClass to the field wrapper, not the
+ * input), the JS descends to the first text input inside.
  */
 jQuery( function( $ ) {
 	'use strict';
 
 	function initPostcodeLookup( $input ) {
-		var $preview = $( '<div class="sendtomp-mp-preview" style="display:none; align-items:center; gap:10px; margin-top:6px; padding:8px 12px; background:#f0f6fc; border:1px solid #72aee6; border-radius:4px; font-size:0.9em;"></div>' );
-		$input.after( $preview );
+		var $button = $( '<button>', {
+			type: 'button',
+			text: ( window.sendtomp_frontend && sendtomp_frontend.find_mp_label ) || 'Find my MP',
+			'class': 'sendtomp-find-mp-button',
+			'aria-controls': 'sendtomp-mp-preview-' + getUid()
+		} ).css( {
+			'margin-top': '6px',
+			'padding': '6px 14px',
+			'background': '#0073aa',
+			'color': '#fff',
+			'border': '1px solid #0073aa',
+			'border-radius': '4px',
+			'cursor': 'pointer',
+			'font-size': '0.9em'
+		} );
 
-		$input.on( 'input blur', function() {
+		var previewId = $button.attr( 'aria-controls' );
+		var $preview  = $( '<div>', {
+			id: previewId,
+			'class': 'sendtomp-mp-preview',
+			'aria-live': 'polite',
+			'role': 'status'
+		} ).css( {
+			'display': 'none',
+			'align-items': 'center',
+			'gap': '10px',
+			'margin-top': '6px',
+			'padding': '8px 12px',
+			'background': '#f0f6fc',
+			'border': '1px solid #72aee6',
+			'border-radius': '4px',
+			'font-size': '0.9em'
+		} );
+
+		$input.after( $button );
+		$button.after( $preview );
+
+		function runLookup( showLoadingState ) {
 			var postcode = $.trim( $input.val() );
-
-			clearTimeout( $input.data( 'debounceTimer' ) );
 
 			if ( postcode.length < 5 ) {
 				$preview.hide().empty();
+				if ( showLoadingState ) {
+					// Explicit button click with too-short postcode: tell
+					// them why nothing happened.
+					$preview.text(
+						( window.sendtomp_frontend && sendtomp_frontend.short_postcode ) ||
+						'Please enter a full UK postcode.'
+					).css( 'display', 'block' );
+				}
 				return;
 			}
 
-			$input.data( 'debounceTimer', setTimeout( function() {
-				$.ajax( {
-					url: sendtomp_frontend.ajax_url,
-					type: 'POST',
-					data: {
-						action: 'sendtomp_lookup_postcode',
-						nonce: sendtomp_frontend.nonce,
-						postcode: postcode
-					},
-					success: function( response ) {
-						if ( response.success && response.data.name ) {
-							renderPreview( $preview, response.data );
-						} else {
-							$preview.hide().empty();
-						}
-					},
-					error: function() {
+			if ( showLoadingState ) {
+				$preview.empty().text(
+					( window.sendtomp_frontend && sendtomp_frontend.finding_label ) ||
+					'Finding your MP...'
+				).css( 'display', 'block' );
+				$button.prop( 'disabled', true );
+			}
+
+			$.ajax( {
+				url: sendtomp_frontend.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'sendtomp_lookup_postcode',
+					nonce: sendtomp_frontend.nonce,
+					postcode: postcode
+				},
+				success: function( response ) {
+					if ( response.success && response.data.name ) {
+						renderPreview( $preview, response.data );
+					} else {
 						$preview.hide().empty();
 					}
-				} );
+				},
+				error: function() {
+					$preview.hide().empty();
+				},
+				complete: function() {
+					$button.prop( 'disabled', false );
+				}
+			} );
+		}
+
+		// Auto-lookup on typing/blur stays for power users.
+		$input.on( 'input blur', function() {
+			clearTimeout( $input.data( 'debounceTimer' ) );
+			$input.data( 'debounceTimer', setTimeout( function() {
+				runLookup( false );
 			}, 500 ) );
+		} );
+
+		// Explicit button press cancels any pending debounce and runs
+		// the lookup immediately with visible feedback.
+		$button.on( 'click', function() {
+			clearTimeout( $input.data( 'debounceTimer' ) );
+			runLookup( true );
 		} );
 	}
 
-	// Build the preview box. Uses jQuery .text() on every API-sourced string
-	// to escape any HTML. The thumbnail URL is validated to be https on the
-	// Parliament domain before use; anything else is dropped silently.
 	function renderPreview( $preview, data ) {
 		var $row  = $( '<div style="display:flex; align-items:center; gap:10px;"></div>' );
 		var thumb = safeThumbnailUrl( data.thumbnail_url );
@@ -97,10 +167,16 @@ jQuery( function( $ ) {
 		return '';
 	}
 
-	// Initialise on any matching inputs.
-	// The .sendtomp-postcode class may be applied directly to an <input>
-	// or (by Gravity Forms) to the wrapping field container — in the latter
-	// case we find the first text/generic input inside it.
+	var _uid = 0;
+	function getUid() {
+		_uid += 1;
+		return _uid;
+	}
+
+	// Initialise on any matching inputs. The .sendtomp-postcode class may
+	// be applied directly to an <input> or (by Gravity Forms) to the
+	// wrapping field container — in the latter case we find the first
+	// text/generic input inside it.
 	$( '.sendtomp-postcode, [data-sendtomp-postcode]' ).each( function() {
 		var $el    = $( this );
 		var $input = $el.is( 'input' )
@@ -108,7 +184,6 @@ jQuery( function( $ ) {
 			: $el.find( 'input[type="text"], input:not([type])' ).first();
 
 		if ( $input.length ) {
-			// Give browsers a hint so autofill recognises this as a postcode.
 			if ( ! $input.attr( 'autocomplete' ) ) {
 				$input.attr( 'autocomplete', 'postal-code' );
 			}
