@@ -21,6 +21,7 @@ class SendToMP_Admin {
 		add_action( 'admin_menu', [ $this, 'add_menu_pages' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices', [ $this, 'render_notices' ] );
+		add_action( 'admin_notices', [ $this, 'maybe_render_gf_confirmation_handoff_notice' ] );
 		add_action( 'admin_init', [ $this, 'maybe_redirect_after_activation' ] );
 		add_action( 'admin_post_sendtomp_dismiss_form_notice', [ $this, 'handle_dismiss_form_notice' ] );
 
@@ -272,5 +273,68 @@ class SendToMP_Admin {
 		echo '<a class="button" href="' . esc_url( $dismiss_permanent ) . '">' . esc_html__( "Don't remind me again", 'sendtomp' ) . '</a>';
 		echo '</p>';
 		echo '</div>';
+	}
+
+	/**
+	 * Admin notice on the Gravity Forms Confirmations page reminding the
+	 * site owner that SendToMP uses a double opt-in flow, so the default
+	 * GF confirmation ("Thanks, we'll be in touch shortly") is misleading
+	 * and should be updated to tell visitors to check their email.
+	 *
+	 * Hooked from admin_notices (registered on the main plugin's admin
+	 * class, not the GF adapter, because GFFeedAddOn::init() doesn't
+	 * reliably run on every GF admin page and the notice kept failing
+	 * to render on the Confirmations subview).
+	 *
+	 * TODO (v2): suppress when the active confirmation already contains
+	 * wording that signals the handoff (e.g. "check your email", "confirm").
+	 * Currently shown unconditionally on the Confirmations tab.
+	 *
+	 * @return void
+	 */
+	public function maybe_render_gf_confirmation_handoff_notice(): void {
+		if ( ! class_exists( 'GFAPI' ) ) {
+			return;
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only URL parameter for screen detection.
+		$page    = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		$view    = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : '';
+		$subview = isset( $_GET['subview'] ) ? sanitize_key( wp_unslash( $_GET['subview'] ) ) : '';
+		$form_id = isset( $_GET['id'] ) ? absint( wp_unslash( $_GET['id'] ) ) : 0;
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		if ( 'gf_edit_forms' !== $page || 'settings' !== $view || 'confirmation' !== $subview || ! $form_id ) {
+			return;
+		}
+
+		$feeds = GFAPI::get_feeds( null, $form_id, 'sendtomp' );
+		if ( is_wp_error( $feeds ) || empty( $feeds ) ) {
+			return;
+		}
+
+		$has_active_feed = false;
+		foreach ( $feeds as $feed ) {
+			if ( ! empty( $feed['is_active'] ) ) {
+				$has_active_feed = true;
+				break;
+			}
+		}
+		if ( ! $has_active_feed ) {
+			return;
+		}
+
+		// Reuse the copy written on the adapter so feed editor and admin
+		// notice stay in sync if one is edited.
+		$body = '';
+		if ( class_exists( 'SendToMP_GF_Adapter' ) && method_exists( 'SendToMP_GF_Adapter', 'render_handoff_notice_html' ) ) {
+			$body = SendToMP_GF_Adapter::get_instance()->render_handoff_notice_html();
+		}
+
+		echo '<div class="notice notice-info"><h3 style="margin-top:0.75em;">'
+			. esc_html__( 'SendToMP is active on this form', 'sendtomp' )
+			. '</h3>'
+			. wp_kses_post( $body )
+			. '</div>';
 	}
 }

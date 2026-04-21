@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.13
+Stable tag: 1.4.14
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -100,6 +100,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 4. Configuring a Gravity Form feed to send submissions to your visitor's MP
 
 == Changelog ==
+
+= 1.4.14 =
+* Fix the confirmation-handoff admin notice not appearing on the Gravity Forms Confirmations page — it's now registered from the main plugin's admin class (which fires reliably on every admin page) rather than from inside the GF adapter's feed add-on lifecycle.
 
 = 1.4.13 =
 * New reminder on the Gravity Forms feed editor and the form's Confirmations page: visitors need to click a link in their email to confirm the message before it reaches the MP, so the default "Thanks, we'll be in touch" confirmation is misleading. Site owners are now prompted to update the confirmation text.
