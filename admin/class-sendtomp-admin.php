@@ -317,7 +317,14 @@ class SendToMP_Admin {
 			return $messages;
 		}
 
-		$feeds = GFAPI::get_feeds( null, $form_id, 'sendtomp' );
+		// Feeds are stored with addon_slug = 'gravity-forms' rather than
+		// 'sendtomp' because the adapter's get_slug() is overridden to
+		// satisfy SendToMP_Form_Adapter_Interface (routing between
+		// adapters), and GF happens to call that same method when saving
+		// feeds. Naming collision noted in
+		// docs/TODO or in the adapter file — for now, query using what's
+		// actually on disk. Changing $_slug would orphan existing feeds.
+		$feeds = GFAPI::get_feeds( null, $form_id, 'gravity-forms' );
 		if ( is_wp_error( $feeds ) || empty( $feeds ) ) {
 			return $messages;
 		}

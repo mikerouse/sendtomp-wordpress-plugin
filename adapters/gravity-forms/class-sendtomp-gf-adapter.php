@@ -225,6 +225,19 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	/**
 	 * Return the adapter slug.
 	 *
+	 * NOTE: this override also masks GFFeedAddOn::get_slug(), which GF
+	 * uses as the `addon_slug` column value when saving feeds to
+	 * wp_gf_addon_feed. As a result, every SendToMP feed is persisted
+	 * with `addon_slug = 'gravity-forms'` rather than 'sendtomp' (the
+	 * value of $_slug). Any `GFAPI::get_feeds()` call looking for our
+	 * feeds must therefore pass 'gravity-forms', not 'sendtomp'.
+	 *
+	 * TODO: rename this to get_adapter_slug() on
+	 * SendToMP_Form_Adapter_Interface so we can stop shadowing GF's
+	 * method, then migrate existing feed rows from 'gravity-forms' to
+	 * 'sendtomp' via an update hook. Cross-cuts WPForms and CF7 adapters
+	 * so is deferred until those are actually in use.
+	 *
 	 * @return string
 	 */
 	public function get_slug(): string {
