@@ -21,7 +21,7 @@ class SendToMP_Admin {
 		add_action( 'admin_menu', [ $this, 'add_menu_pages' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices', [ $this, 'render_notices' ] );
-		add_action( 'admin_notices', [ $this, 'maybe_render_gf_confirmation_handoff_notice' ] );
+		add_filter( 'gform_admin_messages', [ $this, 'maybe_inject_gf_confirmation_handoff_message' ] );
 		add_action( 'admin_init', [ $this, 'maybe_redirect_after_activation' ] );
 		add_action( 'admin_post_sendtomp_dismiss_form_notice', [ $this, 'handle_dismiss_form_notice' ] );
 
@@ -276,25 +276,34 @@ class SendToMP_Admin {
 	}
 
 	/**
-	 * Admin notice on the Gravity Forms Confirmations page reminding the
-	 * site owner that SendToMP uses a double opt-in flow, so the default
-	 * GF confirmation ("Thanks, we'll be in touch shortly") is misleading
-	 * and should be updated to tell visitors to check their email.
+	 * Inject a handoff reminder into Gravity Forms' admin-messages stream
+	 * on the form's Confirmations page. Reminds the site owner that the
+	 * default GF confirmation ("Thanks, we'll be in touch shortly") is
+	 * misleading for SendToMP forms, since the message only reaches the
+	 * MP after the visitor clicks a link in their confirmation email.
 	 *
-	 * Hooked from admin_notices (registered on the main plugin's admin
-	 * class, not the GF adapter, because GFFeedAddOn::init() doesn't
-	 * reliably run on every GF admin page and the notice kept failing
-	 * to render on the Confirmations subview).
+	 * Why this hook and not `admin_notices`: Gravity Forms renders its
+	 * own layout on its admin pages and the standard WP `admin_notices`
+	 * output area isn't surfaced there. GF runs its own notices through
+	 * `gform_admin_messages` (info) and `gform_admin_error_messages`
+	 * (error) filters — these are the only reliable way to surface a
+	 * notice on GF admin subviews.
 	 *
 	 * TODO (v2): suppress when the active confirmation already contains
 	 * wording that signals the handoff (e.g. "check your email", "confirm").
-	 * Currently shown unconditionally on the Confirmations tab.
+	 * Currently shown unconditionally on the Confirmations tab when a
+	 * SendToMP feed exists for the form.
 	 *
-	 * @return void
+	 * @param array $messages Existing GF admin messages.
+	 * @return array
 	 */
-	public function maybe_render_gf_confirmation_handoff_notice(): void {
+	public function maybe_inject_gf_confirmation_handoff_message( $messages ) {
+		if ( ! is_array( $messages ) ) {
+			$messages = [];
+		}
+
 		if ( ! class_exists( 'GFAPI' ) ) {
-			return;
+			return $messages;
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only URL parameter for screen detection.
@@ -305,12 +314,12 @@ class SendToMP_Admin {
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		if ( 'gf_edit_forms' !== $page || 'settings' !== $view || 'confirmation' !== $subview || ! $form_id ) {
-			return;
+			return $messages;
 		}
 
 		$feeds = GFAPI::get_feeds( null, $form_id, 'sendtomp' );
 		if ( is_wp_error( $feeds ) || empty( $feeds ) ) {
-			return;
+			return $messages;
 		}
 
 		$has_active_feed = false;
@@ -321,20 +330,20 @@ class SendToMP_Admin {
 			}
 		}
 		if ( ! $has_active_feed ) {
-			return;
+			return $messages;
 		}
 
 		// Reuse the copy written on the adapter so feed editor and admin
-		// notice stay in sync if one is edited.
+		// message stay in sync if one is edited. GF wraps each entry in
+		// its own notice markup, so we pass body HTML only (no outer div).
 		$body = '';
 		if ( class_exists( 'SendToMP_GF_Adapter' ) && method_exists( 'SendToMP_GF_Adapter', 'render_handoff_notice_html' ) ) {
 			$body = SendToMP_GF_Adapter::get_instance()->render_handoff_notice_html();
 		}
 
-		echo '<div class="notice notice-info"><h3 style="margin-top:0.75em;">'
-			. esc_html__( 'SendToMP is active on this form', 'sendtomp' )
-			. '</h3>'
-			. wp_kses_post( $body )
-			. '</div>';
+		$messages[] = '<strong>' . esc_html__( 'SendToMP is active on this form.', 'sendtomp' ) . '</strong> '
+			. wp_kses_post( $body );
+
+		return $messages;
 	}
 }
