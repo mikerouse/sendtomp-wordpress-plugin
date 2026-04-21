@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.18
+Stable tag: 1.4.19
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -100,6 +100,10 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 4. Configuring a Gravity Form feed to send submissions to your visitor's MP
 
 == Changelog ==
+
+= 1.4.19 =
+* Rename the "Show Live MP Preview" setting to "Enable Find My MP Button for Post Code" so its label matches the button it actually controls.
+* New warning on the Gravity Forms form editor: when a form has a postcode field but no active SendToMP feed, a yellow admin notice appears at the top of the editor with a "Create SendToMP feed" button that deep-links to the feed creation screen. Avoids the confusing "I built the postcode field but the Find My MP button isn't showing up" trap at preview time.
 
 = 1.4.18 =
 * Add a visible "Find my MP" button next to the postcode field for accessibility and usability. The existing debounced auto-lookup on typing/blur is unchanged — the button is a parallel affordance for keyboard users, screen reader users, and anyone who prefers an explicit action. The preview region is now marked as `aria-live="polite"` so assistive tech announces results as they appear.

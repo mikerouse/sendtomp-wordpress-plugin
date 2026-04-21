@@ -132,14 +132,14 @@ class SendToMP_Settings {
 
 		add_settings_field(
 			'show_mp_preview',
-			__( 'Show Live MP Preview', 'sendtomp' ),
+			__( 'Enable Find My MP Button for Post Code', 'sendtomp' ),
 			[ $this, 'render_checkbox_field' ],
 			'sendtomp',
 			$section,
 			[
 				'key'         => 'show_mp_preview',
-				'label'       => __( 'Show the matched MP under the postcode field as visitors type', 'sendtomp' ),
-				'description' => __( 'Gives visitors confidence they are about to write to the correct representative. Applies automatically to the postcode field you mapped in your Gravity Forms SendToMP feed — no CSS classes required.', 'sendtomp' ),
+				'label'       => __( 'Add a "Find my MP" button under the postcode field and show the matched MP as visitors type', 'sendtomp' ),
+				'description' => __( 'Gives visitors confidence they are about to write to the correct representative. Applies automatically to whichever form field you mapped as Postcode in your Gravity Forms SendToMP feed — no CSS classes required.', 'sendtomp' ),
 			]
 		);
 

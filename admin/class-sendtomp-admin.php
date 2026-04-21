@@ -22,6 +22,7 @@ class SendToMP_Admin {
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices', [ $this, 'render_notices' ] );
 		add_filter( 'gform_admin_messages', [ $this, 'maybe_inject_gf_confirmation_handoff_message' ] );
+		add_action( 'gform_editor_pre_render', [ $this, 'maybe_render_form_editor_feed_missing_notice' ] );
 		add_action( 'admin_print_footer_scripts', [ $this, 'maybe_print_handoff_copy_script' ] );
 		add_action( 'admin_init', [ $this, 'maybe_redirect_after_activation' ] );
 		add_action( 'admin_post_sendtomp_dismiss_form_notice', [ $this, 'handle_dismiss_form_notice' ] );
@@ -362,6 +363,76 @@ class SendToMP_Admin {
 		}
 
 		return $messages;
+	}
+
+	/**
+	 * Render a warning on the Gravity Forms form editor when the form
+	 * contains a postcode-looking field but has no active SendToMP feed.
+	 * Hooked to `gform_editor_pre_render` rather than admin_notices
+	 * because GF strips standard admin_notices that aren't tagged with
+	 * the `gf-notice` class, and the form editor page doesn't call
+	 * `display_admin_message()` (so gform_admin_messages doesn't reach
+	 * it either).
+	 *
+	 * TODO (v2): replace this warning with a first-class "MP Lookup
+	 * Field" custom GF field type. Drag-and-drop discovery is more
+	 * usable than an admin warning, but the field type still needs
+	 * feed-level coupling for send-time behaviour, so this notice
+	 * stays useful as a companion even after the custom field lands.
+	 *
+	 * @param array $form The form being edited.
+	 * @return void
+	 */
+	public function maybe_render_form_editor_feed_missing_notice( $form ): void {
+		if ( empty( $form['id'] ) || empty( $form['fields'] ) ) {
+			return;
+		}
+		if ( ! class_exists( 'GFAPI' ) ) {
+			return;
+		}
+
+		// Heuristic: look for any field whose label or admin label
+		// mentions "post code" / "postcode" / "postal code" / "zip".
+		$has_postcode_field = false;
+		foreach ( $form['fields'] as $field ) {
+			$label = strtolower(
+				(string) ( $field->label ?? '' ) . ' ' . (string) ( $field->adminLabel ?? '' )
+			);
+			if ( preg_match( '/\b(post\s*code|postal\s*code|zip)\b/', $label ) ) {
+				$has_postcode_field = true;
+				break;
+			}
+		}
+		if ( ! $has_postcode_field ) {
+			return;
+		}
+
+		// Feeds are stored with addon_slug='gravity-forms' (see
+		// SendToMP_GF_Adapter::get_slug() for the reason).
+		$feeds = GFAPI::get_feeds( null, (int) $form['id'], 'gravity-forms' );
+		if ( ! is_wp_error( $feeds ) && ! empty( $feeds ) ) {
+			foreach ( $feeds as $feed ) {
+				if ( ! empty( $feed['is_active'] ) ) {
+					return; // Active feed exists — nothing to warn about.
+				}
+			}
+		}
+
+		$feed_url = admin_url(
+			'admin.php?page=gf_edit_forms&view=settings&subview=gravity-forms&id=' . absint( $form['id'] ) . '&fid=0'
+		);
+
+		?>
+		<div class="notice notice-warning gf-notice" style="margin:10px 0;padding:10px 14px;">
+			<p><strong><?php esc_html_e( 'SendToMP is not set up for this form yet.', 'sendtomp' ); ?></strong></p>
+			<p><?php esc_html_e( 'This form has a postcode field, but no active SendToMP feed. The "Find my MP" button and MP lookup won\'t appear on the published form until you create one.', 'sendtomp' ); ?></p>
+			<p>
+				<a href="<?php echo esc_url( $feed_url ); ?>" class="button button-primary">
+					<?php esc_html_e( 'Create SendToMP feed', 'sendtomp' ); ?>
+				</a>
+			</p>
+		</div>
+		<?php
 	}
 
 	/**
