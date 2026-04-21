@@ -22,6 +22,7 @@ class SendToMP_Admin {
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices', [ $this, 'render_notices' ] );
 		add_filter( 'gform_admin_messages', [ $this, 'maybe_inject_gf_confirmation_handoff_message' ] );
+		add_action( 'admin_print_footer_scripts', [ $this, 'maybe_print_handoff_copy_script' ] );
 		add_action( 'admin_init', [ $this, 'maybe_redirect_after_activation' ] );
 		add_action( 'admin_post_sendtomp_dismiss_form_notice', [ $this, 'handle_dismiss_form_notice' ] );
 
@@ -351,6 +352,80 @@ class SendToMP_Admin {
 		$messages[] = '<strong>' . esc_html__( 'SendToMP is active on this form.', 'sendtomp' ) . '</strong> '
 			. wp_kses_post( $body );
 
+		// Second message: the ready-to-paste confirmation HTML with a Copy
+		// button. GF renders multi-message payloads as a <ul><li>…</li></ul>,
+		// so block content (pre, div, etc.) is valid HTML inside each <li>.
+		if ( class_exists( 'SendToMP_GF_Adapter' ) && method_exists( 'SendToMP_GF_Adapter', 'render_handoff_snippet_ui' ) ) {
+			$messages[] = wp_kses_post(
+				SendToMP_GF_Adapter::get_instance()->render_handoff_snippet_ui()
+			);
+		}
+
 		return $messages;
+	}
+
+	/**
+	 * Print the tiny clipboard helper for the handoff copy link in the
+	 * admin footer, but only on the GF Confirmations page where the
+	 * handoff notice actually renders.
+	 *
+	 * Kept inline rather than enqueued — it's ~10 lines and only runs
+	 * on one specific admin subview.
+	 *
+	 * @return void
+	 */
+	public function maybe_print_handoff_copy_script(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only screen check.
+		$page    = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		$view    = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : '';
+		$subview = isset( $_GET['subview'] ) ? sanitize_key( wp_unslash( $_GET['subview'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		if ( 'gf_edit_forms' !== $page || 'settings' !== $view || 'confirmation' !== $subview ) {
+			return;
+		}
+
+		$copied_label = esc_js( __( 'Copied to clipboard', 'sendtomp' ) );
+		$failed_label = esc_js( __( 'Copy failed — please select and copy manually', 'sendtomp' ) );
+		?>
+		<script>
+		( function () {
+			document.addEventListener( 'click', function ( evt ) {
+				var link = evt.target.closest( 'a.sendtomp-copy-link' );
+				if ( ! link ) { return; }
+				evt.preventDefault();
+
+				var href   = link.getAttribute( 'href' ) || '';
+				var target = href.charAt( 0 ) === '#'
+					? document.getElementById( href.slice( 1 ) )
+					: null;
+				if ( ! target ) { return; }
+
+				var status = link.parentNode.querySelector( '.sendtomp-copy-status' );
+				var done   = function ( msg ) { if ( status ) { status.textContent = msg; } };
+
+				if ( navigator.clipboard && navigator.clipboard.writeText ) {
+					navigator.clipboard.writeText( target.textContent ).then(
+						function () { done( '<?php echo $copied_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already esc_js above. ?>' ); },
+						function () { done( '<?php echo $failed_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already esc_js above. ?>' ); }
+					);
+				} else {
+					var range = document.createRange();
+					range.selectNodeContents( target );
+					var sel = window.getSelection();
+					sel.removeAllRanges();
+					sel.addRange( range );
+					try {
+						document.execCommand( 'copy' );
+						done( '<?php echo $copied_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already esc_js above. ?>' );
+					} catch ( e ) {
+						done( '<?php echo $failed_label; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already esc_js above. ?>' );
+					}
+					sel.removeAllRanges();
+				}
+			} );
+		} )();
+		</script>
+		<?php
 	}
 }

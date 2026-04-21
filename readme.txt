@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.4.16
+Stable tag: 1.4.17
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -100,6 +100,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 4. Configuring a Gravity Form feed to send submissions to your visitor's MP
 
 == Changelog ==
+
+= 1.4.17 =
+* The handoff reminder on the Gravity Forms Confirmations page now includes a ready-to-paste HTML confirmation message and a one-click Copy HTML button. Site owners no longer need to write their own confirmation copy.
 
 = 1.4.16 =
 * Fix the confirmation-handoff reminder silently bailing because the plugin was querying Gravity Forms for feeds using the wrong slug. Feeds are stored with `addon_slug = 'gravity-forms'` rather than `'sendtomp'` due to an internal interface collision; the reminder now uses the correct slug and appears on the Confirmations page as intended.

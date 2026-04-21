@@ -160,6 +160,50 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 	}
 
 	/**
+	 * The ready-to-paste confirmation HTML offered to site owners in the
+	 * handoff reminder. Inline-styled so it works wherever it's dropped.
+	 *
+	 * @return string
+	 */
+	public function get_handoff_snippet_html(): string {
+		return '<div style="border:2px solid #0073aa;background:#f0f6fc;padding:20px;border-radius:6px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;max-width:600px;margin:1em auto;">' . "\n"
+			. '<h2 style="margin:0 0 12px;color:#0073aa;font-size:20px;">Check your email to finish sending your message</h2>' . "\n"
+			. '<p style="margin:0 0 12px;line-height:1.5;">Thanks for taking action. We\'ve just sent a confirmation email to the address you provided.</p>' . "\n"
+			. '<p style="margin:0 0 12px;font-weight:600;line-height:1.5;">Open that email and click the confirmation link to send your message to your MP.</p>' . "\n"
+			. '<p style="margin:0;font-size:0.9em;color:#555;line-height:1.5;">Your message won\'t reach the MP until you confirm. If you don\'t see the email within a minute or two, please check your spam folder.</p>' . "\n"
+			. '</div>';
+	}
+
+	/**
+	 * Admin-side UI wrapping the ready-to-paste snippet: a prompt, a
+	 * "Copy HTML" link, and the snippet itself escaped into a <pre> block.
+	 * The copy link is wired up by SendToMP_Admin's footer script hook.
+	 *
+	 * Returns an empty string if called without GFFeedAddOn being
+	 * available — keeps the filter callback simple on the admin side.
+	 *
+	 * @return string
+	 */
+	public function render_handoff_snippet_ui(): string {
+		$snippet = $this->get_handoff_snippet_html();
+
+		$intro  = esc_html__( "Here's a ready-to-paste confirmation you can drop into Gravity Forms → Confirmations → Content (switch to Text/HTML mode first):", 'sendtomp' );
+		$copy   = esc_html__( 'Copy HTML', 'sendtomp' );
+
+		// Target lookup uses the href fragment rather than a data-*
+		// attribute because wp_kses_post is unpredictable about which
+		// data-* attributes it keeps on <a>.
+		return '<strong>' . $intro . '</strong>'
+			. '<p style="margin:0.5em 0;">'
+			. '<a href="#sendtomp-handoff-snippet" class="button button-secondary sendtomp-copy-link">' . $copy . '</a>'
+			. ' <span class="sendtomp-copy-status" aria-live="polite"></span>'
+			. '</p>'
+			. '<pre id="sendtomp-handoff-snippet" style="background:#fff;border:1px solid #c3c4c7;border-radius:3px;padding:12px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.4;margin:0;">'
+			. esc_html( $snippet )
+			. '</pre>';
+	}
+
+	/**
 	 * Expose SendToMP-specific runtime tokens in the Gravity Forms
 	 * merge-tag picker so campaign owners can insert them from the UI.
 	 *
