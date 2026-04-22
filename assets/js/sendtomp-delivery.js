@@ -61,4 +61,30 @@ jQuery(function($) {
 			}
 		});
 	});
+
+	/*
+	 * Provider tile picker — show the config panel for the selected
+	 * provider, hide the others. The PHP view initialises with the
+	 * right panel already visible (based on saved setting); this
+	 * handler takes over when the user changes their selection.
+	 */
+	var $tiles  = $('.sendtomp-provider-tile');
+	var $radios = $('.sendtomp-provider-radio');
+	var $panels = $('.sendtomp-provider-panel');
+
+	function syncPanels() {
+		var selected = $radios.filter(':checked').val();
+		$panels.each(function() {
+			var $panel = $(this);
+			if ($panel.data('provider') === selected) {
+				$panel.removeAttr('hidden');
+			} else {
+				$panel.attr('hidden', 'hidden');
+			}
+		});
+		$tiles.removeClass('is-selected');
+		$radios.filter(':checked').closest('.sendtomp-provider-tile').addClass('is-selected');
+	}
+
+	$radios.on('change', syncPanels);
 });

@@ -1506,6 +1506,58 @@ TEXT;
 			}
 		}
 
+		// Email Delivery — provider selection.
+		if ( isset( $input['smtp_provider'] ) ) {
+			$allowed = [ 'wp_mail', 'smtp_plugin', 'brevo', 'smtp_custom' ];
+			$sanitized['smtp_provider'] = in_array( $input['smtp_provider'], $allowed, true )
+				? $input['smtp_provider']
+				: 'wp_mail';
+		}
+
+		// Brevo API key — encrypted. Empty submit = keep existing.
+		if ( isset( $input['brevo_api_key'] ) ) {
+			$submitted = trim( (string) $input['brevo_api_key'] );
+			if ( '' !== $submitted && ! SendToMP_Secret::is_encrypted( $submitted ) ) {
+				$encrypted = SendToMP_Secret::encrypt( $submitted );
+				if ( '' !== $encrypted ) {
+					$sanitized['brevo_api_key'] = $encrypted;
+				}
+			}
+			// Empty submission or already-encrypted value: leave stored key untouched.
+		}
+
+		// Custom SMTP.
+		if ( isset( $input['smtp_host'] ) ) {
+			$sanitized['smtp_host'] = sanitize_text_field( $input['smtp_host'] );
+		}
+		if ( isset( $input['smtp_port'] ) ) {
+			$port = absint( $input['smtp_port'] );
+			$sanitized['smtp_port'] = ( $port > 0 && $port <= 65535 ) ? $port : 587;
+		}
+		if ( isset( $input['smtp_encryption'] ) ) {
+			$allowed_enc = [ 'none', 'tls', 'ssl' ];
+			$sanitized['smtp_encryption'] = in_array( $input['smtp_encryption'], $allowed_enc, true )
+				? $input['smtp_encryption']
+				: 'tls';
+		}
+		// Auth checkbox: absence of the field = unchecked.
+		if ( array_key_exists( 'smtp_provider', $input ) ) {
+			$sanitized['smtp_auth'] = ! empty( $input['smtp_auth'] );
+		}
+		if ( isset( $input['smtp_username'] ) ) {
+			$sanitized['smtp_username'] = sanitize_text_field( $input['smtp_username'] );
+		}
+		// SMTP password — encrypted. Empty submit = keep existing.
+		if ( isset( $input['smtp_password'] ) ) {
+			$submitted = (string) $input['smtp_password'];
+			if ( '' !== $submitted && ! SendToMP_Secret::is_encrypted( $submitted ) ) {
+				$encrypted = SendToMP_Secret::encrypt( $submitted );
+				if ( '' !== $encrypted ) {
+					$sanitized['smtp_password'] = $encrypted;
+				}
+			}
+		}
+
 		return $sanitized;
 	}
 

@@ -51,6 +51,167 @@
 	font-weight: normal;
 }
 
+/*
+ * Email Delivery — provider tile picker.
+ */
+.sendtomp-provider-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 14px;
+	margin: 18px 0 24px;
+}
+
+.sendtomp-provider-tile {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 10px;
+	padding: 18px 14px 14px;
+	background: #fff;
+	border: 2px solid #c3c4c7;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	min-height: 150px;
+	text-align: center;
+}
+
+.sendtomp-provider-tile:hover:not(.is-disabled) {
+	border-color: #72aee6;
+}
+
+.sendtomp-provider-tile.is-selected {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.sendtomp-provider-tile.is-disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	background: #f6f7f7;
+}
+
+.sendtomp-provider-radio {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	margin: 0;
+}
+
+.sendtomp-provider-badge {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.sendtomp-provider-badge--success {
+	background: #d1f0d7;
+	color: #0a6b1f;
+}
+
+.sendtomp-provider-badge--info {
+	background: #e1f0ff;
+	color: #0b5394;
+}
+
+.sendtomp-provider-badge--pro {
+	background: #fff3cd;
+	color: #8a6d3b;
+}
+
+.sendtomp-provider-tile-logo {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 40px;
+}
+
+.sendtomp-provider-tile-logo img {
+	max-height: 36px;
+	max-width: 140px;
+	width: auto;
+	height: auto;
+	display: block;
+}
+
+.sendtomp-provider-tile-logo-fallback {
+	display: none;
+	font-size: 13px;
+	font-weight: 600;
+	color: #50575e;
+	line-height: 1.2;
+}
+
+.sendtomp-provider-tile-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.sendtomp-provider-tile-name {
+	font-weight: 600;
+	color: #1d2327;
+	font-size: 13px;
+}
+
+.sendtomp-provider-tile-subtitle {
+	font-size: 12px;
+	color: #646970;
+	line-height: 1.35;
+}
+
+/*
+ * Per-provider configuration panels — shown/hidden based on tile selection.
+ */
+.sendtomp-provider-panel {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin-bottom: 20px;
+}
+
+.sendtomp-provider-panel[hidden] {
+	display: none;
+}
+
+.sendtomp-provider-panel h3 {
+	margin-top: 0;
+}
+
+.sendtomp-why-brevo {
+	background: #f0f6fc;
+	border-left: 3px solid #2271b1;
+	padding: 12px 16px;
+	margin: 12px 0 18px;
+	border-radius: 0 4px 4px 0;
+}
+
+.sendtomp-why-brevo h4 {
+	margin-top: 0;
+	margin-bottom: 8px;
+	color: #0b5394;
+}
+
+.sendtomp-why-brevo ul {
+	margin: 0 0 8px 20px;
+}
+
+.sendtomp-why-brevo li {
+	margin-bottom: 4px;
+	line-height: 1.45;
+}
+
 /* Dashboard stat cards */
 .sendtomp-stats {
 	display: flex;
