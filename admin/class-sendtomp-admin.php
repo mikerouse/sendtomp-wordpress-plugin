@@ -139,23 +139,18 @@ class SendToMP_Admin {
 			return;
 		}
 
-		$admin_css_path = SENDTOMP_PLUGIN_DIR . 'assets/css/sendtomp-admin.css';
-		$admin_css_ver  = file_exists( $admin_css_path )
-			? SENDTOMP_VERSION . '.' . filemtime( $admin_css_path )
-			: SENDTOMP_VERSION;
-
 		wp_enqueue_style(
 			'sendtomp-admin',
 			SENDTOMP_PLUGIN_URL . 'assets/css/sendtomp-admin.css',
 			[],
-			$admin_css_ver
+			$this->asset_version( 'assets/css/sendtomp-admin.css' )
 		);
 
 		wp_enqueue_script(
 			'sendtomp-admin',
 			SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-admin.js',
 			[ 'jquery' ],
-			SENDTOMP_VERSION,
+			$this->asset_version( 'assets/js/sendtomp-admin.js' ),
 			true
 		);
 
@@ -174,7 +169,7 @@ class SendToMP_Admin {
 				'sendtomp-delivery',
 				SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-delivery.js',
 				[ 'jquery', 'sendtomp-admin' ],
-				SENDTOMP_VERSION,
+				$this->asset_version( 'assets/js/sendtomp-delivery.js' ),
 				true
 			);
 		}
@@ -184,10 +179,29 @@ class SendToMP_Admin {
 				'sendtomp-overrides',
 				SENDTOMP_PLUGIN_URL . 'assets/js/sendtomp-overrides.js',
 				[ 'jquery', 'sendtomp-admin' ],
-				SENDTOMP_VERSION,
+				$this->asset_version( 'assets/js/sendtomp-overrides.js' ),
 				true
 			);
 		}
+	}
+
+	/**
+	 * Build a cache-busting version string for a bundled asset.
+	 *
+	 * Combines the plugin version with the file's mtime so that edits
+	 * to CSS/JS during a release cycle bust browser caches without
+	 * having to bump SENDTOMP_VERSION.
+	 *
+	 * @param string $relative_path Path under the plugin dir, e.g.
+	 *                              "assets/css/sendtomp-admin.css".
+	 * @return string Version string for wp_enqueue_*().
+	 */
+	private function asset_version( string $relative_path ): string {
+		$full = SENDTOMP_PLUGIN_DIR . $relative_path;
+		if ( ! file_exists( $full ) ) {
+			return SENDTOMP_VERSION;
+		}
+		return SENDTOMP_VERSION . '.' . filemtime( $full );
 	}
 
 	/**
