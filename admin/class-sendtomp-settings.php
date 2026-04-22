@@ -106,12 +106,20 @@ class SendToMP_Settings {
 			wp_send_json_error( [ 'message' => $pending->get_error_message() ] );
 		}
 
-		$submission = $pending['submission'];
-		$member     = $pending['resolved_member'];
-		$token      = isset( $pending['token'] ) ? (string) $pending['token'] : '';
+		$submission_data = $pending['submission'];
+		$member          = $pending['resolved_member'];
+		$token           = isset( $pending['token'] ) ? (string) $pending['token'] : '';
 
 		if ( '' === $token ) {
 			wp_send_json_error( [ 'message' => __( 'Could not recover the confirmation token.', 'sendtomp' ) ] );
+		}
+
+		$submission = is_array( $submission_data )
+			? new SendToMP_Submission( $submission_data )
+			: $submission_data;
+
+		if ( is_array( $member ) ) {
+			$submission->resolved_member = $member;
 		}
 
 		$mailer = new SendToMP_Mailer();

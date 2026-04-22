@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.8
+Stable tag: 1.6.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,11 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.9 =
+* Fix a fatal `TypeError` that could fire when a constituent submitted the form a second time while an earlier confirmation was still pending (v1.6.7 auto-resend path). The cached pending record was being passed to the mailer as a decrypted array where a `SendToMP_Submission` object was expected, and the confirmation token was being read from a key that didn't exist in the lookup return shape — so every auto-resend crashed the form submission.
+* Fix a related silent failure on the admin "Resend confirmation email" button (v1.6.6) that bailed with "Could not recover the confirmation token" for the same root cause.
+* Confirmation lookup (`SendToMP_Confirmation::get_pending()`) now returns the token in its result, and both resend paths wrap the decrypted submission array in `SendToMP_Submission` and attach the resolved MP so merge tags in the preview resolve correctly.
 
 = 1.6.8 =
 * **Bulk actions on the submission log.** Each row now has a checkbox, with a "Select all" toggle in the header and footer. A Bulk Actions dropdown above and below the table lets you "Delete selected" or "Export selected as CSV" (Pro tier) in one go, instead of opening each entry individually.

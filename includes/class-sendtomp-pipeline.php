@@ -51,10 +51,22 @@ class SendToMP_Pipeline {
 		// fresh copy in their inbox and can continue.
 		if ( ! $skip_confirmation ) {
 			$existing = ( new SendToMP_Confirmation() )->get_latest_pending_by_email( $submission->constituent_email );
-			if ( ! is_wp_error( $existing ) ) {
+			if ( ! is_wp_error( $existing ) && ! empty( $existing['token'] ) ) {
+				$existing_submission = is_array( $existing['submission'] )
+					? new SendToMP_Submission( $existing['submission'] )
+					: $existing['submission'];
+
+				// The decrypted submission payload doesn't include the resolved
+				// member — that's stored in its own column on the pending row —
+				// so carry it across before sending so the preview and log
+				// name the right MP.
+				if ( isset( $existing['resolved_member'] ) && is_array( $existing['resolved_member'] ) ) {
+					$existing_submission->resolved_member = $existing['resolved_member'];
+				}
+
 				$resent = ( new SendToMP_Mailer() )->send_confirmation(
-					$existing['submission'],
-					(string) ( $existing['token'] ?? '' ),
+					$existing_submission,
+					(string) $existing['token'],
 					(string) ( $existing['resolved_member']['name'] ?? '' ),
 					(string) ( $existing['resolved_member']['constituency'] ?? '' )
 				);

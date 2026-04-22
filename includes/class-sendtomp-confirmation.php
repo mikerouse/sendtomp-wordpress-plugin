@@ -205,6 +205,7 @@ class SendToMP_Confirmation {
 			'submission'      => $decrypted['submission_data'],
 			'resolved_member' => $decrypted['resolved_member'],
 			'pending_id'      => (int) $row['id'],
+			'token'           => $token,
 		];
 	}
 
