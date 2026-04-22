@@ -47,6 +47,15 @@ class SendToMP_GF_Field_MP_Lookup extends GF_Field_Text {
 	}
 
 	/**
+	 * Helper text shown under the field title in the form editor sidebar.
+	 *
+	 * @return string
+	 */
+	public function get_form_editor_field_description() {
+		return esc_attr__( 'Allows users to find their MP by entering their UK post code.', 'sendtomp' );
+	}
+
+	/**
 	 * Self-register into the Advanced Fields group of the field picker.
 	 *
 	 * @return array{group: string, text: string}
