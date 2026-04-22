@@ -106,15 +106,19 @@ $tabs = array(
 			<?php endif; ?>
 
 			<div class="sendtomp-sidebar">
-				<h3><?php esc_html_e( 'SMTP Required', 'sendtomp' ); ?></h3>
-				<p><?php esc_html_e( 'SendToMP requires a transactional email service (Brevo, SendGrid, Postmark, etc.) configured via an SMTP plugin.', 'sendtomp' ); ?></p>
+				<h3><?php esc_html_e( 'Email Delivery', 'sendtomp' ); ?></h3>
 				<?php
-				$smtp_plugin = ( new SendToMP_Mailer() )->detect_smtp_plugin();
-				if ( $smtp_plugin ) {
-					/* translators: %s: name of the detected SMTP plugin */
-					echo '<p style="color: #00a32a;">&#10003; ' . esc_html( sprintf( __( 'Detected: %s', 'sendtomp' ), $smtp_plugin ) ) . '</p>';
+				$sidebar_mailer    = new SendToMP_Mailer();
+				$sidebar_delivery  = admin_url( 'admin.php?page=sendtomp&tab=delivery' );
+				if ( $sidebar_mailer->is_delivery_configured() ) {
+					$label = $sidebar_mailer->get_delivery_label();
+					/* translators: %s: active provider label (e.g. "Brevo", "WP Mail SMTP"). */
+					echo '<p style="color: #00a32a;">&#10003; ' . esc_html( sprintf( __( 'Configured via %s.', 'sendtomp' ), $label ) ) . '</p>';
+					echo '<p><a href="' . esc_url( $sidebar_delivery ) . '">' . esc_html__( 'Manage Email Delivery', 'sendtomp' ) . ' &rarr;</a></p>';
 				} else {
-					echo '<p style="color: #d63638;">&#10007; ' . esc_html__( 'No SMTP plugin detected. Email delivery may be unreliable.', 'sendtomp' ) . '</p>';
+					echo '<p>' . esc_html__( 'Messages to MPs need a reliable transactional email service. SendToMP works with either a built-in provider (Brevo, Custom SMTP) configured on the Email Delivery tab, or a third-party SMTP plugin.', 'sendtomp' ) . '</p>';
+					echo '<p style="color: #d63638;">&#10007; ' . esc_html__( 'Not configured yet.', 'sendtomp' ) . '</p>';
+					echo '<p><a href="' . esc_url( $sidebar_delivery ) . '">' . esc_html__( 'Set up Email Delivery', 'sendtomp' ) . ' &rarr;</a></p>';
 				}
 				?>
 			</div>

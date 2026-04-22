@@ -93,6 +93,65 @@
 	background: #f6f7f7;
 }
 
+/*
+ * Active state — the currently-selected tile when the provider is also
+ * configured and actually handling delivery. A green tick confirms the
+ * choice is "live", not just "saved".
+ */
+.sendtomp-provider-tile.is-active {
+	border-color: #00a32a;
+	box-shadow: 0 0 0 1px #00a32a;
+}
+
+.sendtomp-provider-tile.is-active::after {
+	content: "\2713";
+	position: absolute;
+	bottom: 8px;
+	right: 10px;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: #00a32a;
+	color: #fff;
+	font-size: 14px;
+	line-height: 22px;
+	text-align: center;
+	font-weight: 700;
+}
+
+/*
+ * Status banner above the provider grid — shown when delivery is
+ * configured (either via a built-in provider or a detected SMTP plugin).
+ */
+.sendtomp-delivery-status {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	border-radius: 4px;
+	margin: 12px 0 18px;
+	font-size: 13px;
+}
+
+.sendtomp-delivery-status--ok {
+	background: #edfaef;
+	border-left: 3px solid #00a32a;
+	color: #0a4d1a;
+}
+
+.sendtomp-delivery-status-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: #00a32a;
+	color: #fff;
+	font-size: 14px;
+	font-weight: 700;
+}
+
 .sendtomp-provider-radio {
 	position: absolute;
 	top: 10px;

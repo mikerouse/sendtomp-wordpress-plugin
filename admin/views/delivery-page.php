@@ -13,13 +13,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- template-scoped variables used only in this included view.
 
-$smtp_plugin   = ( new SendToMP_Mailer() )->detect_smtp_plugin();
-$tier          = SendToMP_License::get_tier();
-$is_pro        = SendToMP_License::TIER_PRO === $tier;
+$delivery_mailer = new SendToMP_Mailer();
+$smtp_plugin     = $delivery_mailer->detect_smtp_plugin();
+$tier            = SendToMP_License::get_tier();
+$is_pro          = SendToMP_License::TIER_PRO === $tier;
 
 $settings      = sendtomp()->get_settings();
 $default_prov  = $smtp_plugin ? 'smtp_plugin' : 'wp_mail';
 $current_prov  = isset( $settings['smtp_provider'] ) ? (string) $settings['smtp_provider'] : $default_prov;
+
+$is_delivery_ok = $delivery_mailer->is_delivery_configured();
+$delivery_label = $delivery_mailer->get_delivery_label();
+$active_prov_id = $delivery_mailer->get_provider()->get_id();
 
 // If the user picked smtp_plugin but none is detected, the tile for it
 // won't render, so the selection falls back to wp_mail visually.
@@ -45,7 +50,7 @@ $provider_tile_img_url = SENDTOMP_PLUGIN_URL . 'assets/images/providers/';
  *   @type bool   $disabled    When true, tile cannot be selected (Pro-only in v1.6).
  * }
  */
-$render_tile = function ( array $tile ) use ( $current_prov, $provider_tile_img_url ) {
+$render_tile = function ( array $tile ) use ( $current_prov, $provider_tile_img_url, $is_delivery_ok, $active_prov_id, $smtp_plugin ) {
 	$is_checked = ( $current_prov === $tile['slug'] && empty( $tile['disabled'] ) );
 	$classes    = [ 'sendtomp-provider-tile' ];
 	if ( $is_checked ) {
@@ -53,6 +58,14 @@ $render_tile = function ( array $tile ) use ( $current_prov, $provider_tile_img_
 	}
 	if ( ! empty( $tile['disabled'] ) ) {
 		$classes[] = 'is-disabled';
+	}
+
+	// Success state: this tile is the one actually doing the delivery.
+	// For smtp_plugin, is-active is true when the tile is selected AND a
+	// plugin was detected (the tile only renders in that case anyway).
+	$is_active = $is_checked && $is_delivery_ok && ( $active_prov_id === $tile['slug'] || ( 'smtp_plugin' === $tile['slug'] && $smtp_plugin ) );
+	if ( $is_active ) {
+		$classes[] = 'is-active';
 	}
 
 	$logo_url = ! empty( $tile['logo'] )
@@ -172,6 +185,17 @@ $tiles[] = [
 
 <h2 class="sendtomp-page-subtitle"><?php esc_html_e( 'Email Delivery', 'sendtomp' ); ?></h2>
 <p><?php esc_html_e( 'Choose how SendToMP sends transactional emails — confirmation links to visitors and the verified message to the MP.', 'sendtomp' ); ?></p>
+
+<?php if ( $is_delivery_ok ) : ?>
+	<div class="sendtomp-delivery-status sendtomp-delivery-status--ok">
+		<span class="sendtomp-delivery-status-icon" aria-hidden="true">&#10003;</span>
+		<strong><?php esc_html_e( 'Email delivery is configured.', 'sendtomp' ); ?></strong>
+		<?php
+		/* translators: %s: active provider label (e.g. "Brevo", "WP Mail SMTP"). */
+		echo ' ' . esc_html( sprintf( __( 'Sending via %s.', 'sendtomp' ), $delivery_label ) );
+		?>
+	</div>
+<?php endif; ?>
 
 <form method="post" action="options.php" class="sendtomp-delivery-form">
 	<?php settings_fields( 'sendtomp_settings_group' ); ?>

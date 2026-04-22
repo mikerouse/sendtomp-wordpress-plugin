@@ -59,6 +59,58 @@ class SendToMP_Mailer {
 	}
 
 	/**
+	 * True when SendToMP has a usable email-delivery configuration.
+	 *
+	 * Either:
+	 *   - a third-party SMTP plugin (WP Mail SMTP etc.) is active and
+	 *     handling wp_mail(), OR
+	 *   - SendToMP's own provider setting resolves to something other
+	 *     than the bare wp_mail() passthrough (Brevo API / Custom SMTP).
+	 *
+	 * Callers use this to decide whether to display the "install an
+	 * SMTP plugin" warning.
+	 *
+	 * @return bool
+	 */
+	public function is_delivery_configured(): bool {
+		if ( $this->detect_smtp_plugin() ) {
+			return true;
+		}
+		return 'wp_mail' !== $this->get_provider()->get_id();
+	}
+
+	/**
+	 * Human-readable label for the active email-delivery setup, e.g.
+	 * "Brevo", "Custom SMTP", or the detected plugin's name. Empty
+	 * string when delivery isn't configured.
+	 *
+	 * @return string
+	 */
+	public function get_delivery_label(): string {
+		$smtp_plugin = $this->detect_smtp_plugin();
+		if ( $smtp_plugin ) {
+			return (string) $smtp_plugin;
+		}
+
+		$id = $this->get_provider()->get_id();
+		switch ( $id ) {
+			case 'brevo':
+				return __( 'Brevo', 'sendtomp' );
+			case 'smtp_custom':
+				$host = (string) sendtomp()->get_setting( 'smtp_host' );
+				return '' === $host
+					? __( 'Custom SMTP', 'sendtomp' )
+					: sprintf(
+						/* translators: %s: SMTP server hostname. */
+						__( 'Custom SMTP (%s)', 'sendtomp' ),
+						$host
+					);
+			default:
+				return '';
+		}
+	}
+
+	/**
 	 * Send a canonical message via the configured provider.
 	 *
 	 * @param array $message See SendToMP_Provider_Interface for shape.

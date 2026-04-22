@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,11 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.1 =
+* Email Delivery tab now shows a green success banner and a tick on the active provider tile when delivery is configured — a clear "this is working" signal without having to send a test email.
+* Dismissed the "No SMTP plugin detected" warning when SendToMP's own Email Delivery is configured via Brevo or Custom SMTP. The warning (and the matching sidebar box) now reflect that delivery is OK whenever either a built-in provider is configured or a third-party SMTP plugin is active.
+* Renamed the sidebar "SMTP Required" box to "Email Delivery" and rewrote its copy — an SMTP plugin is one of two ways to configure delivery now, not the only one.
 
 = 1.6.0 =
 * **New: provider tile picker on the Email Delivery tab.** Site owners now choose how SendToMP sends mail from a visual grid of options — detected SMTP plugin (passthrough), Brevo via direct HTTP API, Custom SMTP with your own host/port/credentials, Google Workspace (coming v1.7, Pro), Office 365 (coming v1.8, Pro), or the WordPress default fallback. Selecting a tile reveals that provider's config panel; SendToMP dispatches sends through the chosen provider. No more "read the docs and install a second plugin" shuffle.
@@ -250,6 +255,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.1 =
+Polishes the Email Delivery UX: green tick on the active provider tile, and no more "install an SMTP plugin" warning once delivery is configured.
 
 = 1.6.0 =
 New Email Delivery provider picker — choose from Brevo (direct API), Custom SMTP, or your existing SMTP plugin. Branded admin header. Encrypted storage for API keys and SMTP passwords.

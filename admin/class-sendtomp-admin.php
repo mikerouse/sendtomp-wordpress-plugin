@@ -219,12 +219,17 @@ class SendToMP_Admin {
 		// Missing form plugin — the most important notice; shown first.
 		$this->maybe_render_form_missing_notice();
 
-		// Check for SMTP plugin.
+		// Nudge the user if nothing is set up for email delivery yet.
+		// The check covers both a detected SMTP plugin AND the built-in
+		// Email Delivery tab (Brevo / Custom SMTP), so it goes quiet as
+		// soon as either is configured.
 		$mailer = new SendToMP_Mailer();
-		if ( ! $mailer->detect_smtp_plugin() ) {
+		if ( ! $mailer->is_delivery_configured() ) {
+			$delivery_tab_url = admin_url( 'admin.php?page=sendtomp&tab=delivery' );
 			echo '<div class="notice notice-warning is-dismissible">';
 			echo '<p><strong>' . esc_html__( 'SendToMP:', 'sendtomp' ) . '</strong> ';
-			echo esc_html__( 'No SMTP plugin detected. WordPress default mail may not be reliable for sending emails to MPs. We recommend installing an SMTP plugin such as WP Mail SMTP or FluentSMTP.', 'sendtomp' );
+			echo esc_html__( 'Email delivery is falling back to WordPress default mail, which is not reliable for MP inboxes. Configure a provider on the Email Delivery tab, or install an SMTP plugin.', 'sendtomp' );
+			echo ' <a href="' . esc_url( $delivery_tab_url ) . '">' . esc_html__( 'Open Email Delivery', 'sendtomp' ) . ' &rarr;</a>';
 			echo '</p></div>';
 		}
 
