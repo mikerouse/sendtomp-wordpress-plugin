@@ -7,10 +7,11 @@
 jQuery(function($) {
 	'use strict';
 
-	// Capture the selected member's house from the peer search result.
-	$(document).on('click', '.sendtomp-peer-result-item', function() {
-		var member = $(this).data('member');
-		if (member && $('#sendtomp-override-member-id').length) {
+	// Capture the selected member's house when the peer search fires its
+	// member-selected event (bubbled from the input itself, BEFORE the
+	// dropdown is emptied, so member data is reliably attached).
+	$('#sendtomp-override-member-search').on('sendtomp:member-selected', function(e, member) {
+		if (member) {
 			$('#sendtomp-override-member-house').val(member.house || 'commons');
 		}
 	});

@@ -134,6 +134,11 @@ jQuery( function( $ ) {
 								if ( $hidden.length ) {
 									$hidden.val( m.id ).trigger( 'change' );
 								}
+								// Emit the full member object so consumers that need
+								// more than the id (house, party, constituency) can
+								// capture it — e.g. the Address Overrides form needs
+								// house so the saved override routes correctly.
+								$input.trigger( 'sendtomp:member-selected', [ m ] );
 								$results.hide().empty();
 							} );
 

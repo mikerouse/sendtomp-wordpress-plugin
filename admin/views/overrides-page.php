@@ -46,11 +46,12 @@ SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 			</tr>
 			<tr>
 				<th scope="row">
-					<label for="sendtomp-override-email"><?php esc_html_e( 'Override Email', 'sendtomp' ); ?></label>
+					<label for="sendtomp-override-email"><?php esc_html_e( 'Send to this email address instead', 'sendtomp' ); ?></label>
 				</th>
 				<td>
 					<input type="email" id="sendtomp-override-email" class="regular-text"
-						placeholder="<?php esc_attr_e( 'mp@example.com', 'sendtomp' ); ?>" />
+						placeholder="<?php esc_attr_e( 'caseworker@mp-office.example.com', 'sendtomp' ); ?>" />
+					<p class="description"><?php esc_html_e( 'When SendToMP resolves this MP or Peer, it will route the message here instead of the address the Parliament API returns.', 'sendtomp' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -79,7 +80,7 @@ SendToMP_Form_Adapter_Abstract::enqueue_peer_search();
 				<tr>
 					<th><?php esc_html_e( 'Member', 'sendtomp' ); ?></th>
 					<th><?php esc_html_e( 'House', 'sendtomp' ); ?></th>
-					<th><?php esc_html_e( 'Override Email', 'sendtomp' ); ?></th>
+					<th><?php esc_html_e( 'Send to this email instead', 'sendtomp' ); ?></th>
 					<th><?php esc_html_e( 'Notes', 'sendtomp' ); ?></th>
 					<th><?php esc_html_e( 'Updated', 'sendtomp' ); ?></th>
 					<th><?php esc_html_e( 'Actions', 'sendtomp' ); ?></th>

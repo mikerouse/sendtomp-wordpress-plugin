@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.10
+Stable tag: 1.6.11
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,11 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.11 =
+* Address Overrides tab clarity: the field previously labelled "Override Email" is now "Send to this email address instead", with description copy explaining what actually happens when the override fires. Column header in the existing-overrides table retitled to match.
+* Fix a bug in the member picker on the Address Overrides form where selecting a Lord or MP didn't reliably record which house they belong to — saves could silently default to "commons" for Peers. Peer-search now emits a `sendtomp:member-selected` event on selection so consumers can capture the full member object (including house) before the dropdown clears.
+* Companion middleware endpoint for the member search autocomplete now exists — the "No results found" state on the overrides tab was caused by the website API returning 404 for every query; fixed on the website side.
 
 = 1.6.10 =
 * **Confirmation page overhaul.** The page the constituent lands on when they click the email link now resolves `{mp_name}`, `{mp_constituency}`, postcode and all Gravity Forms merge tags in both the subject and body preview — previously the raw placeholders leaked straight to the screen.
