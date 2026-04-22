@@ -432,6 +432,26 @@ class SendToMP_Mailer {
 					</td>
 				</tr>
 
+				<!-- Duplicate CTA after the preview so readers of long
+					 messages don't have to scroll back to the top to
+					 click "Confirm". -->
+				<tr>
+					<td style="padding:0 32px 32px; text-align:center;">
+						<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+							<tr>
+								<td style="background:#0073aa; border-radius:6px;">
+									<a href="<?php echo $confirmation_url; // phpcs:ignore ?>" style="display:inline-block; padding:14px 28px; color:#ffffff; text-decoration:none; font-weight:600; font-size:16px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+										<?php esc_html_e( 'Confirm and send my message', 'sendtomp' ); ?>
+									</a>
+								</td>
+							</tr>
+						</table>
+						<p style="margin:12px 0 0; font-size:12px; line-height:1.5; color:#6b7280;">
+							<?php echo $expiry_line; ?>
+						</p>
+					</td>
+				</tr>
+
 				<?php if ( $c['show_branding'] ) : ?>
 				<tr>
 					<td style="padding:20px 32px; background:#f9fafb; border-top:1px solid #e5e7eb; text-align:center;">
@@ -473,7 +493,32 @@ class SendToMP_Mailer {
 			'{site_url}'             => home_url(),
 		];
 
-		return str_replace( array_keys( $replacements ), array_values( $replacements ), $template );
+		$result = str_replace( array_keys( $replacements ), array_values( $replacements ), $template );
+
+		// Recover stale GF postcode merge tags.
+		//
+		// When a site owner migrates a form from a plain postcode text
+		// field to the v1.5 "Find My MP" custom field, the feed's body
+		// template may still reference the original field as a GF merge
+		// tag (e.g. "{Post Code:4}"). The deleted field can't be
+		// resolved by GFCommon::replace_variables so the literal
+		// "{Post Code:4}" leaks into the body. Here we substitute the
+		// resolved postcode so both the MP and the constituent preview
+		// see real data instead of leftover syntax.
+		//
+		// Matches case-insensitively: {post code}, {Postcode:4},
+		// {PostCode:7:modifier}, etc. Scoped to the word "post code"
+		// so non-postcode stale tags are left for strip_unresolved to
+		// handle downstream.
+		if ( '' !== (string) $submission->constituent_postcode ) {
+			$result = (string) preg_replace(
+				'/\{\s*post\s*code[^{}\n]*\}/i',
+				$submission->constituent_postcode,
+				$result
+			);
+		}
+
+		return $result;
 	}
 
 	private function get_default_mp_email_template(): string {

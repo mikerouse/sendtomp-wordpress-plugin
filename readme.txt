@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.4
+Stable tag: 1.6.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,10 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.5 =
+* The confirmation email now has a second "Confirm and send my message" button after the message preview — for long templates where the top button scrolls out of view.
+* Fix a bug where the MP email and confirmation preview showed "My post code is ." with an empty postcode. Stale Gravity Forms postcode merge tags (`{Post Code:4}` etc.) left over from forms that switched to the v1.5 "Find My MP" field are now automatically resolved to the submitted postcode.
 
 = 1.6.4 =
 * **Live preview on the Confirmation tab.** The sidebar on the Confirmation settings is replaced with an iframe showing the confirmation email rendered with your current settings + sample MP/message data — so site owners can see exactly what they're building while they tune the fields. Preview refreshes when you save.
@@ -270,6 +274,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.5 =
+Second "Confirm" button after the message preview; fixes empty-postcode leak when a form was migrated to the Find My MP field.
 
 = 1.6.4 =
 Adds a live preview of the confirmation email on the Confirmation tab, a Media Library picker for the logo, and sensible defaults pre-populated in the logo + intro fields.
