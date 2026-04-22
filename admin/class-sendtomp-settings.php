@@ -513,7 +513,19 @@ class SendToMP_Settings {
 			$section,
 			[
 				'key'         => 'thankyou_message',
-				'description' => __( 'Shown after the constituent confirms and their message is sent to the MP. Use this to thank them, explain what to expect next, and encourage social sharing. Leave blank for the default message.', 'sendtomp' ),
+				'description' => __( 'Shown after the constituent confirms and their message is sent to the MP. Use this to thank them, explain what to expect next, and encourage social sharing. Leave blank for the default message. Ignored if you set a custom redirect page below.', 'sendtomp' ),
+			]
+		);
+
+		add_settings_field(
+			'confirmation_success_redirect',
+			__( 'Redirect after confirming', 'sendtomp' ),
+			[ $this, 'render_page_select_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key'         => 'confirmation_success_redirect',
+				'description' => __( 'Send the constituent to one of your own pages after they confirm — typically a custom thank-you page with sharing buttons, a petition sign-up, or a donation ask. Leave as "Show the built-in thank-you page" to keep the default behaviour.', 'sendtomp' ),
 			]
 		);
 
@@ -1504,6 +1516,30 @@ class SendToMP_Settings {
 	}
 
 	/**
+	 * Render a WordPress page selector.
+	 *
+	 * @param array $args Field arguments.
+	 * @return void
+	 */
+	public function render_page_select_field( array $args ): void {
+		$key   = $args['key'];
+		$value = (int) sendtomp()->get_setting( $key );
+		$name  = self::OPTION_NAME . '[' . $key . ']';
+
+		wp_dropdown_pages( [
+			'name'              => $name,
+			'id'                => $key,
+			'selected'          => $value,
+			'show_option_none'  => __( '— Show the built-in thank-you page —', 'sendtomp' ),
+			'option_none_value' => 0,
+		] );
+
+		if ( ! empty( $args['description'] ) ) {
+			printf( '<p class="description">%s</p>', esc_html( $args['description'] ) );
+		}
+	}
+
+	/**
 	 * Render a checkbox field.
 	 *
 	 * @param array $args Field arguments.
@@ -1738,6 +1774,10 @@ TEXT;
 
 		if ( isset( $input['confirmation_logo_url'] ) ) {
 			$sanitized['confirmation_logo_url'] = esc_url_raw( (string) $input['confirmation_logo_url'] );
+		}
+
+		if ( isset( $input['confirmation_success_redirect'] ) ) {
+			$sanitized['confirmation_success_redirect'] = absint( $input['confirmation_success_redirect'] );
 		}
 
 		if ( isset( $input['confirmation_intro_message'] ) ) {

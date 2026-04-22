@@ -35,12 +35,15 @@ class SendToMP_Logger {
 			error_message text DEFAULT NULL,
 			source_adapter varchar(50) NOT NULL DEFAULT '',
 			source_form_id varchar(50) NOT NULL DEFAULT '',
+			pending_id bigint(20) unsigned DEFAULT NULL,
+			confirmed_at datetime DEFAULT NULL,
 			created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			KEY delivery_status (delivery_status),
 			KEY constituent_email (constituent_email),
 			KEY house (house),
-			KEY created_at (created_at)
+			KEY created_at (created_at),
+			KEY pending_id (pending_id)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -53,9 +56,13 @@ class SendToMP_Logger {
 	 * @param SendToMP_Submission $submission The submission object.
 	 * @param string              $status     Delivery status.
 	 * @param string              $error      Optional error message.
+	 * @param int                 $pending_id Optional pending_submissions row id,
+	 *                                        stored so the row can later be
+	 *                                        transitioned to 'confirmed' when
+	 *                                        the constituent clicks the link.
 	 * @return int|false Inserted row ID or false on failure.
 	 */
-	public static function log( SendToMP_Submission $submission, string $status, string $error = '' ) {
+	public static function log( SendToMP_Submission $submission, string $status, string $error = '', int $pending_id = 0 ) {
 		global $wpdb;
 
 		$member = $submission->resolved_member;
@@ -82,6 +89,7 @@ class SendToMP_Logger {
 			'error_message'       => $error,
 			'source_adapter'      => $submission->source_adapter,
 			'source_form_id'      => $submission->source_form_id,
+			'pending_id'          => $pending_id > 0 ? $pending_id : null,
 			'created_at'          => gmdate( 'Y-m-d H:i:s' ),
 		];
 
@@ -99,6 +107,7 @@ class SendToMP_Logger {
 			'%s', // error_message
 			'%s', // source_adapter
 			'%s', // source_form_id
+			'%d', // pending_id (null when 0)
 			'%s', // created_at
 		];
 
@@ -110,6 +119,52 @@ class SendToMP_Logger {
 		}
 
 		return (int) $wpdb->insert_id;
+	}
+
+	/**
+	 * Transition the pending_confirmation row for a given pending_id to
+	 * 'confirmed', stamping confirmed_at to now.
+	 *
+	 * This is the conversion event: email was sent, constituent clicked,
+	 * message delivered. We update the existing row rather than inserting
+	 * a new one so each submission occupies a single log row whose status
+	 * evolves — which makes "emails that did not convert" queryable as
+	 * simply `delivery_status = 'pending_confirmation'`.
+	 *
+	 * @param int    $pending_id  sendtomp_pending row id recorded when the
+	 *                            confirmation email was sent.
+	 * @param string $error       Optional error message (not typically set
+	 *                            on the success path).
+	 * @return bool True when a row was updated, false when no matching
+	 *              pending row was found (e.g. when the log predates the
+	 *              pending_id column migration).
+	 */
+	public static function update_pending_to_confirmed( int $pending_id, string $error = '' ): bool {
+		if ( $pending_id < 1 ) {
+			return false;
+		}
+
+		global $wpdb;
+		$table = self::get_table_name();
+		$now   = gmdate( 'Y-m-d H:i:s' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- direct update required for plugin submission log table.
+		$affected = $wpdb->update(
+			$table,
+			[
+				'delivery_status' => 'confirmed',
+				'confirmed_at'    => $now,
+				'error_message'   => '' !== $error ? $error : null,
+			],
+			[
+				'pending_id'      => $pending_id,
+				'delivery_status' => 'pending_confirmation',
+			],
+			[ '%s', '%s', '%s' ],
+			[ '%d', '%s' ]
+		);
+
+		return (int) $affected > 0;
 	}
 
 	/**

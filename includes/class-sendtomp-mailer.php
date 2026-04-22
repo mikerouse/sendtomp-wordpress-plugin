@@ -274,7 +274,7 @@ class SendToMP_Mailer {
 	 * @param string $body Resolved message body.
 	 * @return string
 	 */
-	private function strip_unresolved_merge_tags( string $body ): string {
+	public function strip_unresolved_merge_tags( string $body ): string {
 		// Match "{Label:id}" or "{Label:id:modifier}" — the GF merge-tag shape.
 		return (string) preg_replace( '/\{[^{}\n]+:\d+(?::[^{}\n]*)?\}/', '', $body );
 	}
@@ -474,7 +474,7 @@ class SendToMP_Mailer {
 		return (string) ob_get_clean();
 	}
 
-	private function replace_placeholders( string $template, SendToMP_Submission $submission ): string {
+	public function replace_placeholders( string $template, SendToMP_Submission $submission ): string {
 		$member = $submission->resolved_member;
 
 		$replacements = [

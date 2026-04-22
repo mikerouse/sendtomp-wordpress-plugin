@@ -43,8 +43,10 @@ $sendtomp_header_hide_tagline = true;
 		<select id="sendtomp-filter-status" name="status" form="sendtomp-log-filter-form">
 			<option value=""><?php esc_html_e( 'All Statuses', 'sendtomp' ); ?></option>
 			<option value="confirmed" <?php selected($filter_status, 'confirmed'); ?>><?php esc_html_e( 'Confirmed & Sent', 'sendtomp' ); ?></option>
-			<option value="failed" <?php selected($filter_status, 'failed'); ?>><?php esc_html_e( 'Failed', 'sendtomp' ); ?></option>
+			<option value="confirmed_and_sent" <?php selected($filter_status, 'confirmed_and_sent'); ?>><?php esc_html_e( 'Sent (skipped confirmation)', 'sendtomp' ); ?></option>
 			<option value="pending_confirmation" <?php selected($filter_status, 'pending_confirmation'); ?>><?php esc_html_e( 'Pending Confirmation', 'sendtomp' ); ?></option>
+			<option value="pending_resent" <?php selected($filter_status, 'pending_resent'); ?>><?php esc_html_e( 'Pending — re-sent', 'sendtomp' ); ?></option>
+			<option value="failed" <?php selected($filter_status, 'failed'); ?>><?php esc_html_e( 'Failed', 'sendtomp' ); ?></option>
 			<option value="rate_limited" <?php selected($filter_status, 'rate_limited'); ?>><?php esc_html_e( 'Rate Limited', 'sendtomp' ); ?></option>
 		</select>
 	</div>

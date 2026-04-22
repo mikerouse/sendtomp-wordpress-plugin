@@ -79,10 +79,15 @@ class SendToMP_Pipeline {
 						$submission->target_member_id = (int) $existing['resolved_member']['id'];
 					}
 
+					// Informational row — keep distinct from pending_confirmation so
+					// it doesn't inflate the "email sent" denominator when we
+					// compute conversion metrics later. Linked to the same
+					// pending_id as the original row for traceability.
 					SendToMP_Logger::log(
 						$submission,
-						'pending_confirmation',
-						__( 'Re-sent the existing confirmation email after the constituent resubmitted the form before confirming the first one.', 'sendtomp' )
+						'pending_resent',
+						__( 'Re-sent the existing confirmation email after the constituent resubmitted the form before confirming the first one.', 'sendtomp' ),
+						isset( $existing['pending_id'] ) ? (int) $existing['pending_id'] : 0
 					);
 
 					return new WP_Error(
@@ -163,10 +168,13 @@ class SendToMP_Pipeline {
 		}
 
 		// 9. Store pending submission and get confirmation token.
-		$token = ( new SendToMP_Confirmation() )->store_pending( $submission, $submission->resolved_member );
-		if ( is_wp_error( $token ) ) {
-			return $token;
+		$stored = ( new SendToMP_Confirmation() )->store_pending( $submission, $submission->resolved_member );
+		if ( is_wp_error( $stored ) ) {
+			return $stored;
 		}
+
+		$token      = (string) $stored['token'];
+		$pending_id = (int) $stored['pending_id'];
 
 		// 10. Send confirmation email.
 		$mail_result = ( new SendToMP_Mailer() )->send_confirmation(
@@ -179,8 +187,10 @@ class SendToMP_Pipeline {
 			return $mail_result;
 		}
 
-		// 11. Log as pending_confirmation.
-		SendToMP_Logger::log( $submission, 'pending_confirmation' );
+		// 11. Log as pending_confirmation (linked to the pending row so the
+		// row can transition to 'confirmed' on click instead of spawning a
+		// second log row — gives us conversion metrics for free).
+		SendToMP_Logger::log( $submission, 'pending_confirmation', '', $pending_id );
 		SendToMP_License::increment_counter();
 
 		return true;

@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.9
+Stable tag: 1.6.10
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,14 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.10 =
+* **Confirmation page overhaul.** The page the constituent lands on when they click the email link now resolves `{mp_name}`, `{mp_constituency}`, postcode and all Gravity Forms merge tags in both the subject and body preview — previously the raw placeholders leaked straight to the screen.
+* Shows the MP's photo (when the postcode resolver returns one) alongside their name and constituency at the top of the card so the constituent sees who they're about to message.
+* Added a "Confirm & Send" button at the top of the card as well as at the bottom, so long messages don't force a scroll to the action.
+* **New "Redirect after confirming" setting** on the Confirmation tab — pick any WordPress page to send the constituent to after they've confirmed, so campaigns can land people on a bespoke thank-you page with sharing buttons, donation asks, etc. Leave as "Show the built-in thank-you page" for the default behaviour.
+* **Conversion metrics now derivable from the log.** Each submission is now represented by a single log row whose status transitions from `pending_confirmation` → `confirmed` when the constituent clicks the link (previously two separate rows were inserted, which made "emails that never converted" untrackable). Adds a `pending_id` column linking log rows to the pending record, plus a `confirmed_at` timestamp — both populated via an automatic dbDelta migration on upgrade. Legacy rows without a `pending_id` fall through to the previous insert behaviour so no history is lost.
+* Auto-resend log entry (when a constituent resubmits before confirming) now uses a distinct `pending_resent` status with its own purple pill, so it no longer inflates the "emails sent" denominator.
 
 = 1.6.9 =
 * Fix a fatal `TypeError` that could fire when a constituent submitted the form a second time while an earlier confirmation was still pending (v1.6.7 auto-resend path). The cached pending record was being passed to the mailer as a decrypted array where a `SendToMP_Submission` object was expected, and the confirmation token was being read from a key that didn't exist in the lookup return shape — so every auto-resend crashed the form submission.

@@ -65,11 +65,12 @@ class SendToMP_Confirmation {
 	}
 
 	/**
-	 * Store a pending submission and return the confirmation token.
+	 * Store a pending submission and return the confirmation token + row id.
 	 *
 	 * @param SendToMP_Submission $submission     The normalised submission.
 	 * @param array               $resolved_member The resolved MP/peer data.
-	 * @return string|WP_Error Token string on success, WP_Error on failure.
+	 * @return array|WP_Error ['token' => string, 'pending_id' => int] on success,
+	 *                       WP_Error on failure.
 	 */
 	public function store_pending( SendToMP_Submission $submission, array $resolved_member ) {
 		global $wpdb;
@@ -119,7 +120,10 @@ class SendToMP_Confirmation {
 			return new WP_Error( 'db_insert_failed', __( 'Failed to store pending submission.', 'sendtomp' ) );
 		}
 
-		return $token;
+		return [
+			'token'      => $token,
+			'pending_id' => (int) $wpdb->insert_id,
+		];
 	}
 
 	/**
@@ -272,10 +276,18 @@ class SendToMP_Confirmation {
 		// Use resolved member ID (target_member_id may be 0 for Commons postcode lookups).
 		$member_id = ! empty( $resolved_member['id'] ) ? (int) $resolved_member['id'] : $submission->target_member_id;
 
-		// Log delivery locally.
+		// Log delivery locally. Prefer transitioning the existing pending_confirmation
+		// row so each submission is one log row whose status evolves — makes
+		// "sent email → never clicked" trivially queryable.
 		if ( class_exists( 'SendToMP_Logger' ) ) {
 			$submission->target_member_id = $member_id;
-			SendToMP_Logger::log( $submission, 'confirmed' );
+			$updated = SendToMP_Logger::update_pending_to_confirmed( $pending_id );
+			if ( ! $updated ) {
+				// Fallback: legacy rows predating the pending_id column, or a
+				// pending record whose log row was deleted. Insert a fresh
+				// confirmed row so the metric isn't silently lost.
+				SendToMP_Logger::log( $submission, 'confirmed' );
+			}
 		}
 
 		// Log to middleware (non-PII data only).
@@ -403,7 +415,19 @@ class SendToMP_Confirmation {
 			exit;
 		}
 
-		// Render thank-you page.
+		// Honour a site-owner-configured "success redirect page" if set —
+		// lets campaigns land the user on a thank-you / share-this page of
+		// their own design instead of the plugin's built-in thank-you.
+		$redirect_page_id = (int) sendtomp()->get_setting( 'confirmation_success_redirect' );
+		if ( $redirect_page_id > 0 ) {
+			$redirect_url = get_permalink( $redirect_page_id );
+			if ( $redirect_url ) {
+				wp_safe_redirect( $redirect_url );
+				exit;
+			}
+		}
+
+		// Fallback: render the built-in thank-you page.
 		$this->render_thankyou_page( $pending['resolved_member'] );
 		exit;
 	}
@@ -460,10 +484,34 @@ class SendToMP_Confirmation {
 		$submission      = $data['submission'];
 		$resolved_member = $data['resolved_member'];
 
+		// Reconstruct a Submission object so we can resolve {mp_name},
+		// {constituent_postcode}, GF merge tags etc. that were left intact
+		// by the feed (they get resolved at send-time). Historically the
+		// confirmation page leaked these as raw placeholders.
+		$submission_obj = is_array( $submission )
+			? new SendToMP_Submission( $submission )
+			: $submission;
+
+		if ( $submission_obj instanceof SendToMP_Submission && is_array( $resolved_member ) ) {
+			$submission_obj->resolved_member = $resolved_member;
+		}
+
+		$raw_subject = is_array( $submission )
+			? (string) ( $submission['message_subject'] ?? '' )
+			: (string) $submission_obj->message_subject;
+		$raw_body    = is_array( $submission )
+			? (string) ( $submission['message_body'] ?? '' )
+			: (string) $submission_obj->message_body;
+
+		$mailer           = new SendToMP_Mailer();
+		$resolved_subject = $mailer->strip_unresolved_merge_tags( $mailer->replace_placeholders( $raw_subject, $submission_obj ) );
+		$resolved_body    = $mailer->strip_unresolved_merge_tags( $mailer->replace_placeholders( $raw_body, $submission_obj ) );
+
 		$mp_name         = isset( $resolved_member['name'] ) ? esc_html( $resolved_member['name'] ) : 'your MP';
 		$mp_constituency = isset( $resolved_member['constituency'] ) ? esc_html( $resolved_member['constituency'] ) : '';
-		$message_subject = isset( $submission['message_subject'] ) ? esc_html( $submission['message_subject'] ) : '';
-		$message_body    = isset( $submission['message_body'] ) ? esc_html( $submission['message_body'] ) : '';
+		$mp_thumbnail    = isset( $resolved_member['thumbnail_url'] ) ? esc_url( $resolved_member['thumbnail_url'] ) : '';
+		$message_subject = esc_html( $resolved_subject );
+		$message_body    = esc_html( $resolved_body );
 		$site_name       = esc_html( get_bloginfo( 'name' ) );
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- token presence already validated by caller; render-only context uses token to build nonce action.
@@ -514,6 +562,37 @@ class SendToMP_Confirmation {
 			color: #646970;
 			margin: 0 0 24px;
 			font-size: 0.95em;
+		}
+		.sendtomp-mp {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+			margin: 0 0 24px;
+			padding: 12px 16px;
+			background: #f6f7f7;
+			border-radius: 6px;
+		}
+		.sendtomp-mp img {
+			width: 64px;
+			height: 64px;
+			border-radius: 50%;
+			object-fit: cover;
+			flex-shrink: 0;
+			background: #e1e4e8;
+		}
+		.sendtomp-mp-details {
+			flex: 1;
+			min-width: 0;
+		}
+		.sendtomp-mp-details .mp-name {
+			font-weight: 600;
+			color: #1d2327;
+			font-size: 1.05em;
+			line-height: 1.3;
+		}
+		.sendtomp-mp-details .mp-constituency {
+			color: #646970;
+			font-size: 0.9em;
 		}
 		.sendtomp-preview {
 			background: #f6f7f7;
@@ -586,8 +665,26 @@ class SendToMP_Confirmation {
 		<div class="sendtomp-card">
 			<h1><?php esc_html_e( 'Confirm your message', 'sendtomp' ); ?></h1>
 			<p class="subtitle">
-				to <?php echo esc_html( $mp_name ); ?><?php echo $mp_constituency ? ', ' . esc_html( $mp_constituency ) : ''; ?>
+				<?php esc_html_e( 'One more step to send this to your representative.', 'sendtomp' ); ?>
 			</p>
+
+			<div class="sendtomp-mp">
+				<?php if ( $mp_thumbnail ) : ?>
+					<img src="<?php echo esc_url( $mp_thumbnail ); ?>" alt="<?php echo esc_attr( $mp_name ); ?>" loading="lazy" />
+				<?php endif; ?>
+				<div class="sendtomp-mp-details">
+					<div class="mp-name"><?php echo esc_html( $mp_name ); ?></div>
+					<?php if ( $mp_constituency ) : ?>
+						<div class="mp-constituency"><?php echo esc_html( $mp_constituency ); ?></div>
+					<?php endif; ?>
+				</div>
+			</div>
+
+			<form method="post" action="<?php echo esc_url( $form_action ); ?>" class="sendtomp-actions" style="margin-top:0; margin-bottom:20px;">
+				<input type="hidden" name="sendtomp_token" value="<?php echo esc_attr( $token ); ?>">
+				<?php wp_nonce_field( $nonce_action ); ?>
+				<button type="submit"><?php esc_html_e( 'Confirm & Send', 'sendtomp' ); ?></button>
+			</form>
 
 			<div class="sendtomp-preview">
 				<h3><?php esc_html_e( 'Your message preview', 'sendtomp' ); ?></h3>
