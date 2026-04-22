@@ -89,7 +89,7 @@ $export_url = add_query_arg( [
 <div class="sendtomp-log-actions-bar">
 	<?php if ( $can_export ) : ?>
 		<a href="<?php echo esc_url( $export_url ); ?>" class="button button-secondary">
-			<?php esc_html_e( 'Export CSV', 'sendtomp' ); ?>
+			<?php esc_html_e( 'Export all as CSV', 'sendtomp' ); ?>
 		</a>
 	<?php else : ?>
 		<span class="sendtomp-export-locked">
@@ -101,60 +101,118 @@ $export_url = add_query_arg( [
 
 <?php if (empty($items)) : ?>
 	<p><?php esc_html_e( 'No submissions found.', 'sendtomp' ); ?></p>
-<?php else : ?>
-	<table class="wp-list-table widefat fixed striped sendtomp-log-table">
-		<thead>
-			<tr>
-				<th scope="col" class="column-date"><?php esc_html_e( 'Date', 'sendtomp' ); ?></th>
-				<th scope="col" class="column-constituent"><?php esc_html_e( 'Constituent', 'sendtomp' ); ?></th>
-				<th scope="col" class="column-mp"><?php esc_html_e( 'MP / Peer', 'sendtomp' ); ?></th>
-				<th scope="col" class="column-house"><?php esc_html_e( 'House', 'sendtomp' ); ?></th>
-				<th scope="col" class="column-status"><?php esc_html_e( 'Status', 'sendtomp' ); ?></th>
-				<th scope="col" class="column-adapter"><?php esc_html_e( 'Source', 'sendtomp' ); ?></th>
-				<th scope="col" class="column-actions"><?php esc_html_e( 'Actions', 'sendtomp' ); ?></th>
-			</tr>
-		</thead>
-		<tbody>
-			<?php foreach ($items as $item) :
-				$view_url        = admin_url( 'admin.php?page=sendtomp-log&view=' . (int) $item->id );
-				$status          = (string) $item->delivery_status;
-				$pill_class      = 'sendtomp-status-pill sendtomp-status-pill--' . sanitize_html_class( $status );
-				$has_note        = ! empty( $item->error_message );
-				$is_error_status = in_array( $status, [ 'error', 'failed' ], true );
-				$note_short      = $has_note ? wp_trim_words( (string) $item->error_message, 10, ' …' ) : '';
-			?>
-				<tr<?php echo ( $has_note && $is_error_status ) ? ' class="sendtomp-log-row--has-error"' : ''; ?>>
-					<td class="column-date">
-						<a href="<?php echo esc_url( $view_url ); ?>">
-							<?php echo esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), strtotime( $item->created_at ) ) ); ?>
-						</a>
+<?php else :
+	$bulk_bar = function ( $position ) use ( $can_export ) {
+		$select_id = 'sendtomp-bulk-action-' . $position;
+		?>
+		<div class="tablenav <?php echo esc_attr( $position ); ?>">
+			<div class="alignleft actions bulkactions">
+				<label for="<?php echo esc_attr( $select_id ); ?>" class="screen-reader-text"><?php esc_html_e( 'Select bulk action', 'sendtomp' ); ?></label>
+				<select name="sendtomp_bulk_action" id="<?php echo esc_attr( $select_id ); ?>" class="sendtomp-bulk-action-select">
+					<option value=""><?php esc_html_e( 'Bulk actions', 'sendtomp' ); ?></option>
+					<option value="delete"><?php esc_html_e( 'Delete selected', 'sendtomp' ); ?></option>
+					<?php if ( $can_export ) : ?>
+						<option value="export"><?php esc_html_e( 'Export selected as CSV', 'sendtomp' ); ?></option>
+					<?php endif; ?>
+				</select>
+				<button type="button" class="button sendtomp-bulk-apply"><?php esc_html_e( 'Apply', 'sendtomp' ); ?></button>
+				<?php if ( 'top' === $position ) : ?>
+					<span class="sendtomp-bulk-feedback" aria-live="polite"></span>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+	};
+	?>
+	<form id="sendtomp-log-bulk-form" method="post" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>">
+		<?php $bulk_bar( 'top' ); ?>
+
+		<table class="wp-list-table widefat fixed striped sendtomp-log-table">
+			<thead>
+				<tr>
+					<td class="manage-column column-cb check-column">
+						<label class="screen-reader-text" for="sendtomp-log-select-all-1"><?php esc_html_e( 'Select all', 'sendtomp' ); ?></label>
+						<input id="sendtomp-log-select-all-1" type="checkbox" class="sendtomp-log-select-all" />
 					</td>
-					<td class="column-constituent">
-						<?php echo esc_html( $item->constituent_name ); ?>
-						<?php if ( ! empty( $item->constituent_postcode ) ) : ?>
-							<br><small><?php echo esc_html( $item->constituent_postcode ); ?></small>
-						<?php endif; ?>
-					</td>
-					<td class="column-mp"><?php echo '' !== (string) $item->target_member_name ? esc_html( $item->target_member_name ) : '—'; ?></td>
-					<td class="column-house"><?php echo esc_html( ucfirst( (string) $item->house ) ); ?></td>
-					<td class="column-status">
-						<span class="<?php echo esc_attr( $pill_class ); ?>">
-							<?php echo esc_html( ucfirst( str_replace( '_', ' ', $status ) ) ); ?>
-						</span>
-						<?php if ( $has_note ) : ?>
-							<div class="sendtomp-log-note-preview <?php echo $is_error_status ? 'sendtomp-log-note-preview--error' : 'sendtomp-log-note-preview--info'; ?>" title="<?php echo esc_attr( $item->error_message ); ?>">
-								<?php echo esc_html( $note_short ); ?>
-							</div>
-						<?php endif; ?>
-					</td>
-					<td class="column-adapter"><?php echo esc_html( $item->source_adapter ); ?></td>
-					<td class="column-actions">
-						<a href="<?php echo esc_url( $view_url ); ?>" class="button button-small"><?php esc_html_e( 'View', 'sendtomp' ); ?></a>
-					</td>
+					<th scope="col" class="column-date"><?php esc_html_e( 'Date', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-constituent"><?php esc_html_e( 'Constituent', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-mp"><?php esc_html_e( 'MP / Peer', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-house"><?php esc_html_e( 'House', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-status"><?php esc_html_e( 'Status', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-adapter"><?php esc_html_e( 'Source', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-actions"><?php esc_html_e( 'Actions', 'sendtomp' ); ?></th>
 				</tr>
-			<?php endforeach; ?>
-		</tbody>
-	</table>
+			</thead>
+			<tbody>
+				<?php foreach ($items as $item) :
+					$view_url        = admin_url( 'admin.php?page=sendtomp-log&view=' . (int) $item->id );
+					$status          = (string) $item->delivery_status;
+					$pill_class      = 'sendtomp-status-pill sendtomp-status-pill--' . sanitize_html_class( $status );
+					$has_note        = ! empty( $item->error_message );
+					$is_error_status = in_array( $status, [ 'error', 'failed' ], true );
+					$note_short      = $has_note ? wp_trim_words( (string) $item->error_message, 10, ' …' ) : '';
+					$row_id          = (int) $item->id;
+					$cb_id           = 'sendtomp-log-cb-' . $row_id;
+				?>
+					<tr<?php echo ( $has_note && $is_error_status ) ? ' class="sendtomp-log-row--has-error"' : ''; ?> data-log-id="<?php echo esc_attr( $row_id ); ?>">
+						<th scope="row" class="check-column">
+							<label class="screen-reader-text" for="<?php echo esc_attr( $cb_id ); ?>">
+								<?php
+								/* translators: %d: log entry ID */
+								echo esc_html( sprintf( __( 'Select log entry %d', 'sendtomp' ), $row_id ) );
+								?>
+							</label>
+							<input id="<?php echo esc_attr( $cb_id ); ?>" type="checkbox" class="sendtomp-log-cb" name="ids[]" value="<?php echo esc_attr( $row_id ); ?>" />
+						</th>
+						<td class="column-date">
+							<a href="<?php echo esc_url( $view_url ); ?>">
+								<?php echo esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), strtotime( $item->created_at ) ) ); ?>
+							</a>
+						</td>
+						<td class="column-constituent">
+							<?php echo esc_html( $item->constituent_name ); ?>
+							<?php if ( ! empty( $item->constituent_postcode ) ) : ?>
+								<br><small><?php echo esc_html( $item->constituent_postcode ); ?></small>
+							<?php endif; ?>
+						</td>
+						<td class="column-mp"><?php echo '' !== (string) $item->target_member_name ? esc_html( $item->target_member_name ) : '—'; ?></td>
+						<td class="column-house"><?php echo esc_html( ucfirst( (string) $item->house ) ); ?></td>
+						<td class="column-status">
+							<span class="<?php echo esc_attr( $pill_class ); ?>">
+								<?php echo esc_html( ucfirst( str_replace( '_', ' ', $status ) ) ); ?>
+							</span>
+							<?php if ( $has_note ) : ?>
+								<div class="sendtomp-log-note-preview <?php echo $is_error_status ? 'sendtomp-log-note-preview--error' : 'sendtomp-log-note-preview--info'; ?>" title="<?php echo esc_attr( $item->error_message ); ?>">
+									<?php echo esc_html( $note_short ); ?>
+								</div>
+							<?php endif; ?>
+						</td>
+						<td class="column-adapter"><?php echo esc_html( $item->source_adapter ); ?></td>
+						<td class="column-actions">
+							<a href="<?php echo esc_url( $view_url ); ?>" class="button button-small"><?php esc_html_e( 'View', 'sendtomp' ); ?></a>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+			<tfoot>
+				<tr>
+					<td class="manage-column column-cb check-column">
+						<label class="screen-reader-text" for="sendtomp-log-select-all-2"><?php esc_html_e( 'Select all', 'sendtomp' ); ?></label>
+						<input id="sendtomp-log-select-all-2" type="checkbox" class="sendtomp-log-select-all" />
+					</td>
+					<th scope="col" class="column-date"><?php esc_html_e( 'Date', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-constituent"><?php esc_html_e( 'Constituent', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-mp"><?php esc_html_e( 'MP / Peer', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-house"><?php esc_html_e( 'House', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-status"><?php esc_html_e( 'Status', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-adapter"><?php esc_html_e( 'Source', 'sendtomp' ); ?></th>
+					<th scope="col" class="column-actions"><?php esc_html_e( 'Actions', 'sendtomp' ); ?></th>
+				</tr>
+			</tfoot>
+		</table>
+
+		<?php $bulk_bar( 'bottom' ); ?>
+	</form>
 
 	<?php if ($total_pages > 1) : ?>
 		<div class="tablenav bottom">

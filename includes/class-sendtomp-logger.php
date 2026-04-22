@@ -247,6 +247,48 @@ class SendToMP_Logger {
 	}
 
 	/**
+	 * Delete multiple log entries by IDs in a single query.
+	 *
+	 * @param int[] $ids Log row IDs.
+	 * @return int Number of rows removed.
+	 */
+	public static function delete_logs_by_ids( array $ids ): int {
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+		if ( empty( $ids ) ) {
+			return 0;
+		}
+
+		global $wpdb;
+		$table        = self::get_table_name();
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; IDs are cast to int via absint; direct query required for plugin tables.
+		$affected = $wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE id IN ({$placeholders})", $ids ) );
+		return (int) $affected;
+	}
+
+	/**
+	 * Fetch multiple log entries by IDs, preserving the requested order.
+	 *
+	 * Used by the CSV export handler when exporting a selected subset.
+	 *
+	 * @param int[] $ids Log row IDs.
+	 * @return object[] Matching rows (may be fewer than requested if some are missing).
+	 */
+	public static function get_logs_by_ids( array $ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+		if ( empty( $ids ) ) {
+			return [];
+		}
+
+		global $wpdb;
+		$table        = self::get_table_name();
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- table name is from trusted internal source; IDs are cast to int via absint; direct query required for plugin tables.
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE id IN ({$placeholders}) ORDER BY created_at DESC", $ids ) );
+		return is_array( $rows ) ? $rows : [];
+	}
+
+	/**
 	 * Return aggregate statistics.
 	 *
 	 * @return array Associative array of stats.

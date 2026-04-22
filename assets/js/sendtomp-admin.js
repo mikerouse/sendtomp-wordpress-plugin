@@ -286,6 +286,104 @@
 			});
 		});
 
+		// Submission-log bulk actions: select-all + apply (delete / export).
+		var $bulkForm = $('#sendtomp-log-bulk-form');
+		if ($bulkForm.length) {
+			var $selectAll = $bulkForm.find('.sendtomp-log-select-all');
+			var $rowCbs    = $bulkForm.find('.sendtomp-log-cb');
+			var $feedback  = $bulkForm.find('.sendtomp-bulk-feedback');
+
+			function setFeedback(msg, isError) {
+				$feedback
+					.text(msg || '')
+					.css('color', isError ? '#d63638' : '#1d2327');
+			}
+
+			function syncSelectAllState() {
+				var total   = $rowCbs.length;
+				var checked = $rowCbs.filter(':checked').length;
+				$selectAll.prop('checked', total > 0 && checked === total);
+				$selectAll.each(function () {
+					this.indeterminate = checked > 0 && checked < total;
+				});
+			}
+
+			$selectAll.on('change', function () {
+				var on = $(this).prop('checked');
+				$rowCbs.prop('checked', on);
+				$selectAll.prop('checked', on).each(function () { this.indeterminate = false; });
+			});
+
+			$rowCbs.on('change', syncSelectAllState);
+
+			$bulkForm.on('click', '.sendtomp-bulk-apply', function (e) {
+				e.preventDefault();
+				var $applyBtn = $(this);
+				var $select   = $applyBtn.closest('.bulkactions').find('.sendtomp-bulk-action-select');
+				var action    = $select.val();
+				var ids       = $rowCbs.filter(':checked').map(function () { return this.value; }).get();
+
+				if (!action) {
+					setFeedback('Choose an action first.', true);
+					return;
+				}
+				if (!ids.length) {
+					setFeedback('Select at least one row.', true);
+					return;
+				}
+
+				if (action === 'delete') {
+					if (!confirm('Delete ' + ids.length + ' log entr' + (ids.length === 1 ? 'y' : 'ies') + '? This cannot be undone.')) {
+						return;
+					}
+					$applyBtn.prop('disabled', true);
+					setFeedback('Deleting…', false);
+
+					$.ajax({
+						url: sendtomp_admin.ajax_url,
+						type: 'POST',
+						traditional: true,
+						data: {
+							action: 'sendtomp_bulk_delete_logs',
+							nonce: sendtomp_admin.nonce,
+							ids: ids
+						},
+						success: function (response) {
+							if (response.success) {
+								setFeedback(response.data.message || 'Deleted.', false);
+								setTimeout(function () { window.location.reload(); }, 700);
+							} else {
+								$applyBtn.prop('disabled', false);
+								setFeedback((response.data && response.data.message) || 'Delete failed.', true);
+							}
+						},
+						error: function () {
+							$applyBtn.prop('disabled', false);
+							setFeedback('Request failed. Please try again.', true);
+						}
+					});
+					return;
+				}
+
+				if (action === 'export') {
+					// Native form submit so the browser receives the CSV as a download.
+					// Inject hidden `action` + `nonce` fields so admin-ajax routes correctly,
+					// then restore the form after submission.
+					var $actionField = $('<input type="hidden" name="action" value="sendtomp_export_logs_csv" />');
+					var $nonceField  = $('<input type="hidden" name="nonce" value="' + sendtomp_admin.nonce + '" />');
+					$bulkForm.append($actionField).append($nonceField);
+					setFeedback('Preparing download…', false);
+					$bulkForm.get(0).submit();
+					setTimeout(function () {
+						$actionField.remove();
+						$nonceField.remove();
+						setFeedback('', false);
+					}, 500);
+					return;
+				}
+			});
+		}
+
 		// Media Library picker — wires up any .sendtomp-media-select
 		// button to open wp.media(), and writes the chosen image's URL
 		// back into the paired input. Each button carries a

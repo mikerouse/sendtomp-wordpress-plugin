@@ -427,6 +427,33 @@
 	width: 80px;
 }
 
+.sendtomp-log-table .column-cb {
+	width: 2.2em;
+	padding: 8px 0 8px 4px;
+	vertical-align: middle;
+}
+
+.sendtomp-log-table .check-column input[type="checkbox"] {
+	margin: 0 auto;
+	display: block;
+}
+
+#sendtomp-log-bulk-form .tablenav {
+	margin: 6px 0;
+}
+
+#sendtomp-log-bulk-form .bulkactions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+#sendtomp-log-bulk-form .sendtomp-bulk-feedback {
+	margin-left: 8px;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
 .sendtomp-status-pill {
 	display: inline-block;
 	padding: 2px 10px;

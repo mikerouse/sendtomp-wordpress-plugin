@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.7
+Stable tag: 1.6.8
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,11 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.8 =
+* **Bulk actions on the submission log.** Each row now has a checkbox, with a "Select all" toggle in the header and footer. A Bulk Actions dropdown above and below the table lets you "Delete selected" or "Export selected as CSV" (Pro tier) in one go, instead of opening each entry individually.
+* Bulk delete shows a row count in the confirmation ("Delete 3 log entries?") and reloads the page after deletion; bulk export produces a CSV filename suffixed with "-selection" so it's easy to tell apart from a full export.
+* The existing single-row delete (on the detail page) and "Export all as CSV" button remain unchanged.
 
 = 1.6.7 =
 * **Auto-resend on duplicate submissions.** When a constituent fills in the form a second time before confirming the first submission (most often because they didn't see the first confirmation email), SendToMP now detects the existing pending record and re-sends the original confirmation email using the same token — no duplicate pending record, no opaque "duplicate submission" error, just a fresh email in their inbox.

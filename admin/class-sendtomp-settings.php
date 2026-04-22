@@ -34,6 +34,44 @@ class SendToMP_Settings {
 		add_action( 'wp_ajax_sendtomp_delete_override', [ $this, 'handle_delete_override' ] );
 		add_action( 'wp_ajax_sendtomp_resend_confirmation', [ $this, 'handle_resend_confirmation' ] );
 		add_action( 'wp_ajax_sendtomp_delete_log', [ $this, 'handle_delete_log' ] );
+		add_action( 'wp_ajax_sendtomp_bulk_delete_logs', [ $this, 'handle_bulk_delete_logs' ] );
+	}
+
+	/**
+	 * AJAX handler — delete multiple log entries by ID.
+	 *
+	 * Expects POST: nonce, ids[] (array of log row IDs).
+	 *
+	 * @return void
+	 */
+	public function handle_bulk_delete_logs(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$ids = isset( $_POST['ids'] ) && is_array( $_POST['ids'] )
+			? array_map( 'absint', wp_unslash( $_POST['ids'] ) )
+			: [];
+
+		if ( empty( $ids ) ) {
+			wp_send_json_error( [ 'message' => __( 'No log entries selected.', 'sendtomp' ) ] );
+		}
+
+		$deleted = SendToMP_Logger::delete_logs_by_ids( $ids );
+
+		if ( 0 === $deleted ) {
+			wp_send_json_error( [ 'message' => __( 'No log entries were deleted.', 'sendtomp' ) ] );
+		}
+
+		wp_send_json_success( [
+			'deleted' => $deleted,
+			'message' => sprintf(
+				/* translators: %d: number of entries deleted */
+				_n( '%d entry deleted.', '%d entries deleted.', $deleted, 'sendtomp' ),
+				$deleted
+			),
+		] );
 	}
 
 	/**
@@ -1065,8 +1103,18 @@ class SendToMP_Settings {
 			wp_die( esc_html__( 'CSV export requires a Pro plan.', 'sendtomp' ) );
 		}
 
+		// Optional: export only selected IDs (bulk-action flow).
+		$selected_ids = [];
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce verified above via check_ajax_referer.
+		if ( isset( $_REQUEST['ids'] ) && is_array( $_REQUEST['ids'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce verified above.
+			$selected_ids = array_values( array_unique( array_filter( array_map( 'absint', wp_unslash( $_REQUEST['ids'] ) ) ) ) );
+		}
+
+		$filename_suffix = ! empty( $selected_ids ) ? '-selection' : '';
+
 		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename=sendtomp-logs-' . gmdate( 'Y-m-d' ) . '.csv' );
+		header( 'Content-Disposition: attachment; filename=sendtomp-logs-' . gmdate( 'Y-m-d' ) . $filename_suffix . '.csv' );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- writing CSV directly to the php://output stream for download; WP_Filesystem is not applicable to output streams.
 		$output = fopen( 'php://output', 'w' );
@@ -1077,34 +1125,44 @@ class SendToMP_Settings {
 			'Status', 'Override', 'Contact Quality', 'Adapter', 'Error',
 		] );
 
-		// Stream all pages to avoid memory issues on large datasets.
-		$page = 1;
-		do {
-			$logs = SendToMP_Logger::get_logs( [
-				'per_page' => 1000,
-				'page'     => $page,
-			] );
+		$write_row = function ( $log ) use ( $output ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv -- writing to php://output stream for CSV download; WP_Filesystem not applicable.
+			fputcsv( $output, array_map( [ $this, 'csv_safe' ], [
+				$log->created_at,
+				$log->constituent_name,
+				$log->constituent_email,
+				$log->constituent_postcode,
+				$log->message_subject,
+				$log->target_member_name,
+				$log->house,
+				$log->delivery_status,
+				$log->override_applied ?? '',
+				$log->contact_quality ?? '',
+				$log->source_adapter,
+				$log->error_message ?? '',
+			] ) );
+		};
 
-			foreach ( $logs['items'] as $log ) {
-				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fputcsv -- writing to php://output stream for CSV download; WP_Filesystem not applicable.
-				fputcsv( $output, array_map( [ $this, 'csv_safe' ], [
-					$log->created_at,
-					$log->constituent_name,
-					$log->constituent_email,
-					$log->constituent_postcode,
-					$log->message_subject,
-					$log->target_member_name,
-					$log->house,
-					$log->delivery_status,
-					$log->override_applied ?? '',
-					$log->contact_quality ?? '',
-					$log->source_adapter,
-					$log->error_message ?? '',
-				] ) );
+		if ( ! empty( $selected_ids ) ) {
+			foreach ( SendToMP_Logger::get_logs_by_ids( $selected_ids ) as $log ) {
+				$write_row( $log );
 			}
+		} else {
+			// Stream all pages to avoid memory issues on large datasets.
+			$page = 1;
+			do {
+				$logs = SendToMP_Logger::get_logs( [
+					'per_page' => 1000,
+					'page'     => $page,
+				] );
 
-			$page++;
-		} while ( count( $logs['items'] ) >= 1000 );
+				foreach ( $logs['items'] as $log ) {
+					$write_row( $log );
+				}
+
+				$page++;
+			} while ( count( $logs['items'] ) >= 1000 );
+		}
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing php://output stream used for direct CSV download, WP_Filesystem is not applicable.
 		fclose( $output );
