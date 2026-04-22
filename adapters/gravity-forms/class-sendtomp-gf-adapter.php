@@ -593,16 +593,21 @@ class SendToMP_GF_Adapter extends GFFeedAddOn implements SendToMP_Form_Adapter_I
 			return $template;
 		};
 
-		// Postcode source: prefer the feed's explicit mapping; when empty, fall
-		// back to the first SendToMP MP Lookup field on the form (v1.5.0). This
-		// means a form using the custom field works even without a mapping set.
-		$postcode_field_id = rgar( $feed['meta'], 'fieldMap_constituent_postcode' );
-		if ( '' === (string) $postcode_field_id ) {
-			$auto_postcode_id = $this->find_mp_lookup_field_id( $form );
-			if ( $auto_postcode_id ) {
-				$postcode_field_id = (string) $auto_postcode_id;
-			}
-		}
+		// Postcode source: prefer the custom SendToMP MP Lookup field when
+		// present on the form — it's purpose-built and makes the feed's
+		// fieldMap_constituent_postcode mapping unnecessary. This is the
+		// v1.5.0 custom field's "just works" UX promise. Fall back to the
+		// feed's explicit mapping when no lookup field exists (legacy forms
+		// with a plain postcode text field keep working unchanged).
+		//
+		// Without this priority flip, a form migrated from a plain text
+		// postcode field to the custom MP Lookup field would keep failing
+		// with "Postcode is required" because the stale mapping still
+		// points at the deleted text field.
+		$auto_postcode_id  = $this->find_mp_lookup_field_id( $form );
+		$postcode_field_id = $auto_postcode_id
+			? (string) $auto_postcode_id
+			: (string) rgar( $feed['meta'], 'fieldMap_constituent_postcode' );
 
 		// Extract mapped field values (constituent identification) plus resolved templates (message content).
 		$mapped_data = [

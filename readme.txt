@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.1
+Stable tag: 1.6.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.2 =
+* Fix the "Find My MP" custom field not being used for postcode lookup when a feed also had a legacy `fieldMap_constituent_postcode` mapping pointing at a deleted text field. The custom field now takes priority over any feed mapping whenever it's present on the form — matching the drag-and-drop "just works" UX promise introduced in v1.5.0. Forms that still use a plain postcode text field plus a mapping continue to work unchanged.
 
 = 1.6.1 =
 * Email Delivery tab now shows a green success banner and a tick on the active provider tile when delivery is configured — a clear "this is working" signal without having to send a test email.
@@ -255,6 +258,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.2 =
+Fixes a bug where forms migrated to the "Find My MP" field kept failing postcode lookup because the old feed mapping was overriding it.
 
 = 1.6.1 =
 Polishes the Email Delivery UX: green tick on the active provider tile, and no more "install an SMTP plugin" warning once delivery is configured.
