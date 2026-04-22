@@ -32,6 +32,8 @@ $sendtomp_header_hide_tagline = isset( $sendtomp_header_hide_tagline )
 		src="<?php echo esc_url( SENDTOMP_PLUGIN_URL . 'assets/icon-2000x1000.png' ); ?>"
 		alt="<?php esc_attr_e( 'SendToMP', 'sendtomp' ); ?>"
 		class="sendtomp-admin-logo"
+		width="128"
+		height="64"
 	/>
 	<span class="sendtomp-admin-header-version">v<?php echo esc_html( SENDTOMP_VERSION ); ?></span>
 </h1>

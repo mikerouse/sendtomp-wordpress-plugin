@@ -139,11 +139,16 @@ class SendToMP_Admin {
 			return;
 		}
 
+		$admin_css_path = SENDTOMP_PLUGIN_DIR . 'assets/css/sendtomp-admin.css';
+		$admin_css_ver  = file_exists( $admin_css_path )
+			? SENDTOMP_VERSION . '.' . filemtime( $admin_css_path )
+			: SENDTOMP_VERSION;
+
 		wp_enqueue_style(
 			'sendtomp-admin',
 			SENDTOMP_PLUGIN_URL . 'assets/css/sendtomp-admin.css',
 			[],
-			SENDTOMP_VERSION
+			$admin_css_ver
 		);
 
 		wp_enqueue_script(
