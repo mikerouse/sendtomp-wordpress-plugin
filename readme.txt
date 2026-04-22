@@ -98,6 +98,7 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 2. Settings page — configure your email templates, rate limits, and form field mappings
 3. Delivery log — track every submission with status, timestamps, and MP details
 4. Configuring a Gravity Form feed to send submissions to your visitor's MP
+5. Custom field type in Gravity Forms
 
 == Changelog ==
 

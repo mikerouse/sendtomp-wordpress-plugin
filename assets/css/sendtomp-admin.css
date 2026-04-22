@@ -2,7 +2,49 @@
  * SendToMP Admin Styles
  */
 
-/* Version badge in title */
+/*
+ * Branded admin page header — used on every SendToMP admin view via
+ * the shared partial at admin/views/partials/header.php. Keeps WP's
+ * notice-placement semantics by using <h1> as the wrapper element.
+ */
+.sendtomp-admin-header {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin: 10px 0 4px;
+	padding: 0;
+	font-size: inherit;
+	font-weight: normal;
+}
+
+.sendtomp-admin-logo {
+	max-height: 64px;
+	width: auto;
+	display: block;
+}
+
+.sendtomp-admin-header-version {
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	background: #f0f0f1;
+	color: #50575e;
+	padding: 4px 10px;
+	border-radius: 10px;
+	letter-spacing: 0.02em;
+}
+
+.sendtomp-admin-header-tagline {
+	color: #50575e;
+	margin: 4px 0 18px;
+	font-size: 13px;
+}
+
+.sendtomp-page-subtitle {
+	margin-top: 18px;
+}
+
+/* Legacy version badge — still referenced by any view we haven't migrated yet. */
 .sendtomp-version {
 	color: #666;
 	font-size: 0.6em;

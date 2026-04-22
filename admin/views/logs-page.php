@@ -28,9 +28,14 @@ $total_items = isset($logs['total']) ? intval($logs['total']) : 0;
 $total_pages = ceil($total_items / $per_page);
 
 $base_url = admin_url('admin.php?page=sendtomp&tab=log');
+
+$sendtomp_header_hide_tagline = true;
 ?>
 
-<h2><?php echo esc_html__( 'SendToMP', 'sendtomp' ); ?> &mdash; <?php esc_html_e( 'Submission Log', 'sendtomp' ); ?></h2>
+<div class="wrap">
+<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/partials/header.php'; ?>
+
+<h2 class="sendtomp-page-subtitle"><?php esc_html_e( 'Submission Log', 'sendtomp' ); ?></h2>
 
 <div class="sendtomp-log-filters">
 	<div>
@@ -167,3 +172,5 @@ $base_url = admin_url('admin.php?page=sendtomp&tab=log');
 		</div>
 	<?php endif; ?>
 <?php endif; ?>
+
+</div><!-- .wrap -->

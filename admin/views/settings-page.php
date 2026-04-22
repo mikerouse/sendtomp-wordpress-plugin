@@ -19,8 +19,7 @@ $tabs = array(
 ?>
 
 <div class="wrap">
-	<h1>SendToMP <span class="sendtomp-version">v<?php echo esc_html( SENDTOMP_VERSION ); ?></span></h1>
-	<p><?php esc_html_e( 'Send verified constituent messages to UK Members of Parliament. Built by a former parliamentary assistant.', 'sendtomp' ); ?></p>
+	<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/partials/header.php'; ?>
 
 	<nav class="nav-tab-wrapper">
 		<?php foreach ($tabs as $slug => $label) : ?>
