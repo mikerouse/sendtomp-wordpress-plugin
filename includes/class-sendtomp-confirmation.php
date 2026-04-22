@@ -128,6 +128,41 @@ class SendToMP_Confirmation {
 	 * @param string $token The confirmation token.
 	 * @return array|WP_Error Array with 'submission', 'resolved_member', 'pending_id' on success.
 	 */
+	/**
+	 * Return the most recent non-expired pending record for a given
+	 * constituent email, decrypted and ready to reuse.
+	 *
+	 * Used by the submission-log "Resend confirmation email" action:
+	 * the log doesn't store the token (by design — tokens must not
+	 * leak into the log), so we look up the pending record by email
+	 * and re-send using the existing token + data.
+	 *
+	 * @param string $email Constituent email address.
+	 * @return array|WP_Error Same shape as get_pending(), or WP_Error
+	 *                       when none exists / all have expired.
+	 */
+	public function get_latest_pending_by_email( string $email ) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'sendtomp_pending';
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- internal table, prepared params; direct query required.
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$table} WHERE constituent_email = %s AND status = %s AND expires_at > %s ORDER BY id DESC LIMIT 1",
+				$email,
+				'pending',
+				gmdate( 'Y-m-d H:i:s' )
+			),
+			ARRAY_A
+		);
+
+		if ( ! $row ) {
+			return new WP_Error( 'sendtomp_no_pending', __( 'No active pending confirmation found for this email. The link may have expired, or the message was already confirmed.', 'sendtomp' ) );
+		}
+
+		return $this->get_pending( (string) $row['token'] );
+	}
+
 	public function get_pending( string $token ) {
 		global $wpdb;
 

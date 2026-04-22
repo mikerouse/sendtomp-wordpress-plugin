@@ -32,6 +32,93 @@ class SendToMP_Settings {
 		add_action( 'wp_ajax_sendtomp_brevo_enquiry', [ $this, 'handle_brevo_enquiry' ] );
 		add_action( 'wp_ajax_sendtomp_save_override', [ $this, 'handle_save_override' ] );
 		add_action( 'wp_ajax_sendtomp_delete_override', [ $this, 'handle_delete_override' ] );
+		add_action( 'wp_ajax_sendtomp_resend_confirmation', [ $this, 'handle_resend_confirmation' ] );
+		add_action( 'wp_ajax_sendtomp_delete_log', [ $this, 'handle_delete_log' ] );
+	}
+
+	/**
+	 * AJAX handler — re-send the confirmation email for a pending log entry.
+	 *
+	 * @return void
+	 */
+	public function handle_resend_confirmation(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$log_id = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : 0;
+		if ( $log_id < 1 ) {
+			wp_send_json_error( [ 'message' => __( 'Missing log id.', 'sendtomp' ) ] );
+		}
+
+		$log = SendToMP_Logger::get_log_by_id( $log_id );
+		if ( ! $log ) {
+			wp_send_json_error( [ 'message' => __( 'Log entry not found.', 'sendtomp' ) ] );
+		}
+
+		if ( 'pending_confirmation' !== (string) $log->delivery_status ) {
+			wp_send_json_error( [ 'message' => __( 'Resend is only available for pending-confirmation entries.', 'sendtomp' ) ] );
+		}
+
+		$confirmation = new SendToMP_Confirmation();
+		$pending      = $confirmation->get_latest_pending_by_email( (string) $log->constituent_email );
+
+		if ( is_wp_error( $pending ) ) {
+			wp_send_json_error( [ 'message' => $pending->get_error_message() ] );
+		}
+
+		$submission = $pending['submission'];
+		$member     = $pending['resolved_member'];
+		$token      = isset( $pending['token'] ) ? (string) $pending['token'] : '';
+
+		if ( '' === $token ) {
+			wp_send_json_error( [ 'message' => __( 'Could not recover the confirmation token.', 'sendtomp' ) ] );
+		}
+
+		$mailer = new SendToMP_Mailer();
+		$result = $mailer->send_confirmation(
+			$submission,
+			$token,
+			(string) ( $member['name'] ?? '' ),
+			(string) ( $member['constituency'] ?? '' )
+		);
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( [ 'message' => $result->get_error_message() ] );
+		}
+
+		wp_send_json_success( [
+			'message' => sprintf(
+				/* translators: %s: constituent email */
+				__( 'Confirmation email re-sent to %s.', 'sendtomp' ),
+				(string) $log->constituent_email
+			),
+		] );
+	}
+
+	/**
+	 * AJAX handler — delete a single submission log entry.
+	 *
+	 * @return void
+	 */
+	public function handle_delete_log(): void {
+		check_ajax_referer( 'sendtomp_admin', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Permission denied.', 'sendtomp' ) ] );
+		}
+
+		$log_id = isset( $_POST['log_id'] ) ? absint( $_POST['log_id'] ) : 0;
+		if ( $log_id < 1 ) {
+			wp_send_json_error( [ 'message' => __( 'Missing log id.', 'sendtomp' ) ] );
+		}
+
+		$deleted = SendToMP_Logger::delete_log_by_id( $log_id );
+		if ( ! $deleted ) {
+			wp_send_json_error( [ 'message' => __( 'Log entry could not be deleted (it may already be gone).', 'sendtomp' ) ] );
+		}
+
+		wp_send_json_success( [ 'message' => __( 'Log entry deleted.', 'sendtomp' ) ] );
 	}
 
 	/**

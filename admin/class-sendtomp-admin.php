@@ -125,6 +125,13 @@ class SendToMP_Admin {
 			return;
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing param, no state change.
+		$view_id = isset( $_GET['view'] ) ? absint( $_GET['view'] ) : 0;
+		if ( $view_id > 0 ) {
+			include plugin_dir_path( __FILE__ ) . 'views/logs-detail-page.php';
+			return;
+		}
+
 		include plugin_dir_path( __FILE__ ) . 'views/logs-page.php';
 	}
 

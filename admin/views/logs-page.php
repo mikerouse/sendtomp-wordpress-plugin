@@ -78,10 +78,31 @@ $sendtomp_header_hide_tagline = true;
 	</div>
 </div>
 
+<?php
+$can_export = function_exists( 'sendtomp' ) && sendtomp()->can( 'csv_export' );
+$export_url = add_query_arg( [
+	'action' => 'sendtomp_export_logs_csv',
+	'nonce'  => wp_create_nonce( 'sendtomp_admin' ),
+], admin_url( 'admin-ajax.php' ) );
+?>
+
+<div class="sendtomp-log-actions-bar">
+	<?php if ( $can_export ) : ?>
+		<a href="<?php echo esc_url( $export_url ); ?>" class="button button-secondary">
+			<?php esc_html_e( 'Export CSV', 'sendtomp' ); ?>
+		</a>
+	<?php else : ?>
+		<span class="sendtomp-export-locked">
+			<?php esc_html_e( 'CSV export is a Pro feature.', 'sendtomp' ); ?>
+			<a href="https://bluetorch.co.uk/sendtomp#pricing" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Upgrade', 'sendtomp' ); ?> &rarr;</a>
+		</span>
+	<?php endif; ?>
+</div>
+
 <?php if (empty($items)) : ?>
 	<p><?php esc_html_e( 'No submissions found.', 'sendtomp' ); ?></p>
 <?php else : ?>
-	<table class="wp-list-table widefat fixed striped">
+	<table class="wp-list-table widefat fixed striped sendtomp-log-table">
 		<thead>
 			<tr>
 				<th scope="col" class="column-date"><?php esc_html_e( 'Date', 'sendtomp' ); ?></th>
@@ -89,29 +110,46 @@ $sendtomp_header_hide_tagline = true;
 				<th scope="col" class="column-mp"><?php esc_html_e( 'MP / Peer', 'sendtomp' ); ?></th>
 				<th scope="col" class="column-house"><?php esc_html_e( 'House', 'sendtomp' ); ?></th>
 				<th scope="col" class="column-status"><?php esc_html_e( 'Status', 'sendtomp' ); ?></th>
-				<th scope="col" class="column-adapter"><?php esc_html_e( 'Adapter', 'sendtomp' ); ?></th>
+				<th scope="col" class="column-adapter"><?php esc_html_e( 'Source', 'sendtomp' ); ?></th>
+				<th scope="col" class="column-actions"><?php esc_html_e( 'Actions', 'sendtomp' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
-			<?php foreach ($items as $item) : ?>
-				<tr>
+			<?php foreach ($items as $item) :
+				$view_url    = admin_url( 'admin.php?page=sendtomp-log&view=' . (int) $item->id );
+				$status      = (string) $item->delivery_status;
+				$pill_class  = 'sendtomp-status-pill sendtomp-status-pill--' . sanitize_html_class( $status );
+				$has_error   = ! empty( $item->error_message );
+				$error_short = $has_error ? wp_trim_words( (string) $item->error_message, 10, ' …' ) : '';
+			?>
+				<tr<?php echo $has_error ? ' class="sendtomp-log-row--has-error"' : ''; ?>>
 					<td class="column-date">
-						<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?>
+						<a href="<?php echo esc_url( $view_url ); ?>">
+							<?php echo esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), strtotime( $item->created_at ) ) ); ?>
+						</a>
 					</td>
 					<td class="column-constituent">
-						<?php echo esc_html($item->constituent_name); ?>
-						<?php if (!empty($item->constituent_postcode)) : ?>
-							<br><small><?php echo esc_html($item->constituent_postcode); ?></small>
+						<?php echo esc_html( $item->constituent_name ); ?>
+						<?php if ( ! empty( $item->constituent_postcode ) ) : ?>
+							<br><small><?php echo esc_html( $item->constituent_postcode ); ?></small>
 						<?php endif; ?>
 					</td>
-					<td class="column-mp"><?php echo esc_html($item->target_member_name); ?></td>
-					<td class="column-house"><?php echo esc_html($item->house); ?></td>
+					<td class="column-mp"><?php echo '' !== (string) $item->target_member_name ? esc_html( $item->target_member_name ) : '—'; ?></td>
+					<td class="column-house"><?php echo esc_html( ucfirst( (string) $item->house ) ); ?></td>
 					<td class="column-status">
-						<span class="sendtomp-status-<?php echo esc_attr($item->delivery_status); ?>">
-							<?php echo esc_html(ucfirst($item->delivery_status)); ?>
+						<span class="<?php echo esc_attr( $pill_class ); ?>">
+							<?php echo esc_html( ucfirst( str_replace( '_', ' ', $status ) ) ); ?>
 						</span>
+						<?php if ( $has_error ) : ?>
+							<div class="sendtomp-log-error-preview" title="<?php echo esc_attr( $item->error_message ); ?>">
+								<?php echo esc_html( $error_short ); ?>
+							</div>
+						<?php endif; ?>
 					</td>
-					<td class="column-adapter"><?php echo esc_html($item->source_adapter); ?></td>
+					<td class="column-adapter"><?php echo esc_html( $item->source_adapter ); ?></td>
+					<td class="column-actions">
+						<a href="<?php echo esc_url( $view_url ); ?>" class="button button-small"><?php esc_html_e( 'View', 'sendtomp' ); ?></a>
+					</td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>

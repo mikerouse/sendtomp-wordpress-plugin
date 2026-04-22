@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.5
+Stable tag: 1.6.6
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,15 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.6 =
+* **Submission log overhaul.** The log tab is no longer just a read-only table:
+  * Every row has a "View" link that opens a full detail page showing the constituent, the message, the resolved MP, the source adapter and form, contact quality + override applied, and — crucially — the full error message when a submission failed.
+  * Colour-coded status pills (green for sent, blue for confirmed, amber for pending confirmation, red for errors) so you can scan the list and spot problems at a glance.
+  * Error rows show a truncated preview of the error message in the status column — hover or open the detail page for the full text.
+  * "Resend confirmation email" button on the detail page for entries still in Pending confirmation state. The plugin looks up the active pending record by constituent email and re-sends the confirmation link using the existing (non-expired) token.
+  * "Delete this log entry" button on the detail page for cleaning up test rows or GDPR one-offs.
+  * Export CSV button surfaced at the top of the log list (was available as an AJAX endpoint but had no UI trigger). Remains Pro-only; free sites see an upgrade link.
 
 = 1.6.5 =
 * The confirmation email now has a second "Confirm and send my message" button after the message preview — for long templates where the top button scrolls out of view.
@@ -274,6 +283,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.6 =
+Submission log overhaul: detail view with full error messages, colour-coded status pills, resend confirmation, delete, and a CSV export button.
 
 = 1.6.5 =
 Second "Confirm" button after the message preview; fixes empty-postcode leak when a form was migrated to the Find My MP field.

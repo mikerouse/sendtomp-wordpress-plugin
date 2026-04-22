@@ -220,6 +220,33 @@ class SendToMP_Logger {
 	}
 
 	/**
+	 * Fetch a single log entry by ID.
+	 *
+	 * @param int $id Log row ID.
+	 * @return object|null Row object, or null when no row matches.
+	 */
+	public static function get_log_by_id( int $id ): ?object {
+		global $wpdb;
+		$table = self::get_table_name();
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- internal table name, id is cast to int; direct query required for plugin tables.
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d LIMIT 1", $id ) );
+		return $row ? $row : null;
+	}
+
+	/**
+	 * Delete a single log entry by ID.
+	 *
+	 * @param int $id Log row ID.
+	 * @return bool True if a row was removed.
+	 */
+	public static function delete_log_by_id( int $id ): bool {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- direct delete required for plugin tables.
+		$affected = $wpdb->delete( self::get_table_name(), [ 'id' => $id ], [ '%d' ] );
+		return $affected > 0;
+	}
+
+	/**
 	 * Return aggregate statistics.
 	 *
 	 * @return array Associative array of stats.
