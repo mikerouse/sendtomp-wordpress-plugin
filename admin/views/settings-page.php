@@ -72,6 +72,61 @@ $tabs = array(
 				</form>
 				<hr />
 				<?php include SENDTOMP_PLUGIN_DIR . 'admin/views/logs-page.php'; ?>
+			<?php elseif ($current_tab === 'confirmation') :
+				// Build a sample context that feeds the preview iframe
+				// on the right — pulled from stored settings + defaults
+				// so the preview reflects what the user has configured.
+				$confirmation_defaults = SendToMP_Settings::get_confirmation_defaults();
+				$confirmation_settings = sendtomp()->get_settings();
+				$preview_logo  = (string) ( $confirmation_settings['confirmation_logo_url'] ?? '' );
+				if ( '' === $preview_logo ) {
+					$preview_logo = (string) $confirmation_defaults['confirmation_logo_url'];
+				}
+				$preview_intro = (string) ( $confirmation_settings['confirmation_intro_message'] ?? '' );
+				if ( '' === $preview_intro ) {
+					$preview_intro = (string) $confirmation_defaults['confirmation_intro_message'];
+				}
+				$preview_expiry = (int) ( $confirmation_settings['confirmation_expiry'] ?? 24 );
+
+				$preview_context = [
+					'mp_name'          => __( 'Jane Smith MP', 'sendtomp' ),
+					'mp_constituency'  => __( 'Westminster North', 'sendtomp' ),
+					'location_label'   => ' (Westminster North)',
+					'site_name'        => get_bloginfo( 'name' ),
+					'confirmation_url' => '#preview-link',
+					'expiry_hours'     => $preview_expiry,
+					'message_subject'  => __( 'Please support the upcoming vote', 'sendtomp' ),
+					'message_body'     => __( "Dear Jane Smith MP,\n\nI am writing as your constituent in Westminster North about the upcoming vote on [issue]. I believe this matters because [reason], and I hope you will represent our community's view when this comes before Parliament.\n\nYours sincerely,\nAlex Example", 'sendtomp' ),
+					'logo_url'         => $preview_logo,
+					'intro_message'    => $preview_intro,
+					'show_branding'    => SendToMP_License::should_show_branding(),
+				];
+				$preview_html = ( new SendToMP_Mailer() )->render_confirmation_html( $preview_context );
+				?>
+				<div class="sendtomp-confirmation-layout">
+					<div class="sendtomp-confirmation-form">
+						<form method="post" action="options.php">
+							<?php
+							settings_fields('sendtomp_settings_group');
+							do_settings_sections('sendtomp');
+							submit_button();
+							?>
+						</form>
+					</div>
+					<aside class="sendtomp-confirmation-preview" aria-label="<?php esc_attr_e( 'Confirmation email preview', 'sendtomp' ); ?>">
+						<div class="sendtomp-confirmation-preview-header">
+							<h3><?php esc_html_e( 'Email preview', 'sendtomp' ); ?></h3>
+							<p class="description">
+								<?php esc_html_e( 'Live preview of the confirmation email using your current settings and sample MP / message data. Save your changes to refresh the preview.', 'sendtomp' ); ?>
+							</p>
+						</div>
+						<iframe
+							class="sendtomp-confirmation-preview-frame"
+							title="<?php esc_attr_e( 'Confirmation email preview', 'sendtomp' ); ?>"
+							srcdoc="<?php echo esc_attr( $preview_html ); ?>"
+						></iframe>
+					</aside>
+				</div>
 			<?php else : ?>
 				<form method="post" action="options.php">
 					<?php
@@ -84,6 +139,7 @@ $tabs = array(
 
 		</div>
 
+		<?php if ( $current_tab !== 'confirmation' ) : ?>
 		<div class="sendtomp-settings-aside">
 			<div class="sendtomp-sidebar">
 				<h3><?php esc_html_e( 'Need Help?', 'sendtomp' ); ?></h3>
@@ -134,5 +190,6 @@ $tabs = array(
 				<p><a href="https://bluetorch.co.uk/sendtomp/templates" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View templates', 'sendtomp' ); ?> &rarr;</a></p>
 			</div>
 		</div>
+		<?php endif; ?>
 	</div>
 </div>

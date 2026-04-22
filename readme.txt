@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.3
+Stable tag: 1.6.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,11 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.4 =
+* **Live preview on the Confirmation tab.** The sidebar on the Confirmation settings is replaced with an iframe showing the confirmation email rendered with your current settings + sample MP/message data — so site owners can see exactly what they're building while they tune the fields. Preview refreshes when you save.
+* **Media Library picker for the confirmation email logo.** The "Confirmation Email Logo" field now has a "Select from Media Library" button that opens the standard WordPress media picker, plus a thumbnail preview and a Remove button. Pasting a raw URL still works.
+* **Sensible defaults pre-populated.** The Confirmation Email Logo auto-detects the theme's custom logo (or site icon as fallback), and the Confirmation Email Intro ships with a short campaign-neutral message. Both are fully editable — the defaults are there so the email looks branded from the first send, not after the site owner discovers the settings tab.
 
 = 1.6.3 =
 * **Rich HTML confirmation email.** The email sent to constituents asking them to confirm their message is now a branded, responsive HTML email with a prominent "Confirm and send my message" button and a styled preview of the message as it will reach the MP. Plain-text fallback is still sent alongside for accessibility and older clients.
@@ -265,6 +270,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.4 =
+Adds a live preview of the confirmation email on the Confirmation tab, a Media Library picker for the logo, and sensible defaults pre-populated in the logo + intro fields.
 
 = 1.6.3 =
 Rich HTML confirmation email, with customisable logo and intro message on the Confirmation tab. Placeholders now resolve properly in the message preview.

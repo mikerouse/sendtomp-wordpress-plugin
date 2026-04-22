@@ -183,6 +183,11 @@ class SendToMP_Admin {
 				true
 			);
 		}
+
+		// Confirmation tab uses wp.media() for the logo picker.
+		if ( 'confirmation' === $current_tab ) {
+			wp_enqueue_media();
+		}
 	}
 
 	/**

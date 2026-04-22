@@ -205,6 +205,48 @@
 			});
 		});
 
+		// Media Library picker — wires up any .sendtomp-media-select
+		// button to open wp.media(), and writes the chosen image's URL
+		// back into the paired input. Each button carries a
+		// data-sendtomp-media-target pointing at the input id.
+		var mediaFrames = {};
+		$(document).on('click', '.sendtomp-media-select', function (e) {
+			e.preventDefault();
+			var targetId = $(this).data('sendtomp-media-target');
+			var $input   = $('#' + targetId);
+			var $preview = $('#' + targetId + '-preview');
+
+			if (typeof wp === 'undefined' || !wp.media) {
+				alert('Media Library is not available on this page.');
+				return;
+			}
+
+			if (!mediaFrames[targetId]) {
+				mediaFrames[targetId] = wp.media({
+					title: 'Select confirmation email logo',
+					button: { text: 'Use this image' },
+					multiple: false,
+					library: { type: 'image' }
+				});
+
+				mediaFrames[targetId].on('select', function () {
+					var attachment = mediaFrames[targetId].state().get('selection').first().toJSON();
+					$input.val(attachment.url).trigger('change');
+					$preview.find('img').attr('src', attachment.url);
+					$preview.show();
+				});
+			}
+
+			mediaFrames[targetId].open();
+		});
+
+		$(document).on('click', '.sendtomp-media-clear', function (e) {
+			e.preventDefault();
+			var targetId = $(this).data('sendtomp-media-target');
+			$('#' + targetId).val('').trigger('change');
+			$('#' + targetId + '-preview').hide().find('img').attr('src', '');
+		});
+
 		// GDPR data erasure handler.
 		$('#sendtomp-erase-data').on('click', function (e) {
 			e.preventDefault();

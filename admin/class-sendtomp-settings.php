@@ -384,16 +384,18 @@ class SendToMP_Settings {
 			]
 		);
 
+		$defaults = self::get_confirmation_defaults();
+
 		add_settings_field(
 			'confirmation_logo_url',
 			__( 'Confirmation Email Logo', 'sendtomp' ),
-			[ $this, 'render_text_field' ],
+			[ $this, 'render_media_url_field' ],
 			'sendtomp',
 			$section,
 			[
 				'key'         => 'confirmation_logo_url',
-				'type'        => 'url',
-				'description' => __( 'URL of a logo image to show at the top of the confirmation email. Keep it under 400px wide for good rendering in email clients. PNG or JPEG recommended (SVG may not render in older Outlook).', 'sendtomp' ),
+				'default'     => $defaults['confirmation_logo_url'],
+				'description' => __( 'Shown at the top of the confirmation email. Defaults to your theme\'s logo or site icon — change it here if you want something different. PNG or JPEG renders best; SVG works in most clients but not older Outlook.', 'sendtomp' ),
 			]
 		);
 
@@ -405,9 +407,53 @@ class SendToMP_Settings {
 			$section,
 			[
 				'key'         => 'confirmation_intro_message',
-				'description' => __( 'Optional message shown at the top of the confirmation email, above the "confirm your message" body. Plain text or basic HTML (links, bold, paragraphs). Leave blank to skip.', 'sendtomp' ),
+				'default'     => $defaults['confirmation_intro_message'],
+				'description' => __( 'Shown in a highlight box at the top of the confirmation email. Plain text or basic HTML (links, bold, paragraphs). Edit to match your campaign voice.', 'sendtomp' ),
 			]
 		);
+	}
+
+	/**
+	 * Sensible defaults for the Confirmation tab's "polish" fields.
+	 *
+	 * - Logo URL: prefer the theme's custom_logo (the header logo most
+	 *   sites already maintain), fall back to the WordPress site icon
+	 *   (the favicon / PWA icon — also curated by the site owner).
+	 * - Intro message: a short, campaign-neutral prompt that most
+	 *   campaigns will keep as-is or lightly edit.
+	 *
+	 * Returned values are used both to pre-populate the settings fields
+	 * AND as the runtime fallback in the mailer when the stored value
+	 * is empty.
+	 *
+	 * @return array{confirmation_logo_url: string, confirmation_intro_message: string}
+	 */
+	public static function get_confirmation_defaults(): array {
+		$logo_url = '';
+
+		if ( function_exists( 'get_theme_mod' ) ) {
+			$custom_logo_id = (int) get_theme_mod( 'custom_logo' );
+			if ( $custom_logo_id && function_exists( 'wp_get_attachment_image_src' ) ) {
+				$src = wp_get_attachment_image_src( $custom_logo_id, 'medium' );
+				if ( is_array( $src ) && ! empty( $src[0] ) ) {
+					$logo_url = (string) $src[0];
+				}
+			}
+		}
+
+		if ( '' === $logo_url && function_exists( 'get_site_icon_url' ) ) {
+			$icon = get_site_icon_url( 256 );
+			if ( is_string( $icon ) && '' !== $icon ) {
+				$logo_url = $icon;
+			}
+		}
+
+		$intro_default = __( 'Thanks for taking action. One last step — click the button below to confirm, and your message will be on its way to your MP.', 'sendtomp' );
+
+		return [
+			'confirmation_logo_url'      => $logo_url,
+			'confirmation_intro_message' => $intro_default,
+		];
 	}
 
 	/**
@@ -1164,6 +1210,9 @@ class SendToMP_Settings {
 		$key   = $args['key'];
 		$type  = isset( $args['type'] ) ? $args['type'] : 'text';
 		$value = sendtomp()->get_setting( $key );
+		if ( '' === (string) $value && isset( $args['default'] ) ) {
+			$value = (string) $args['default'];
+		}
 		$name  = self::OPTION_NAME . '[' . esc_attr( $key ) . ']';
 
 		printf(
@@ -1172,6 +1221,45 @@ class SendToMP_Settings {
 			esc_attr( $key ),
 			esc_attr( $name ),
 			esc_attr( $value )
+		);
+
+		if ( ! empty( $args['description'] ) ) {
+			printf( '<p class="description">%s</p>', esc_html( $args['description'] ) );
+		}
+	}
+
+	/**
+	 * Render a text field paired with a "Select from Media Library"
+	 * button. The button is wired to wp.media() in sendtomp-admin.js;
+	 * a picked image's URL is written back into this input.
+	 *
+	 * @param array $args Field args — key, optional default, description.
+	 * @return void
+	 */
+	public function render_media_url_field( array $args ): void {
+		$key   = $args['key'];
+		$value = sendtomp()->get_setting( $key );
+		if ( '' === (string) $value && isset( $args['default'] ) ) {
+			$value = (string) $args['default'];
+		}
+		$name    = self::OPTION_NAME . '[' . esc_attr( $key ) . ']';
+		$preview = '' !== (string) $value;
+
+		printf(
+			'<div class="sendtomp-media-field">
+				<div class="sendtomp-media-row">
+					<input type="url" id="%1$s" name="%2$s" value="%3$s" class="regular-text sendtomp-media-url" data-sendtomp-media-target="%1$s" />
+					<button type="button" class="button sendtomp-media-select" data-sendtomp-media-target="%1$s">%4$s</button>
+					<button type="button" class="button sendtomp-media-clear" data-sendtomp-media-target="%1$s">%5$s</button>
+				</div>
+				<div class="sendtomp-media-preview" id="%1$s-preview"%6$s><img src="%3$s" alt="" /></div>
+			</div>',
+			esc_attr( $key ),
+			esc_attr( $name ),
+			esc_attr( $value ),
+			esc_html__( 'Select from Media Library', 'sendtomp' ),
+			esc_html__( 'Remove', 'sendtomp' ),
+			$preview ? '' : ' style="display:none;"'
 		);
 
 		if ( ! empty( $args['description'] ) ) {
@@ -1245,6 +1333,9 @@ class SendToMP_Settings {
 	public function render_textarea_field( array $args ): void {
 		$key   = $args['key'];
 		$value = sendtomp()->get_setting( $key );
+		if ( '' === (string) $value && isset( $args['default'] ) ) {
+			$value = (string) $args['default'];
+		}
 		$name  = self::OPTION_NAME . '[' . esc_attr( $key ) . ']';
 
 		printf(

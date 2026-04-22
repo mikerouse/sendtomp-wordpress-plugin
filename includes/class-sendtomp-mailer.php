@@ -223,6 +223,15 @@ class SendToMP_Mailer {
 		$from_name  = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_name'] ?? '' ) );
 		$from_email = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_email'] ?? '' ) );
 
+		// Resolve stored settings with the same defaults shown in the
+		// Confirmation tab, so sites that haven't touched these fields
+		// still get a branded email on the first send.
+		$defaults        = class_exists( 'SendToMP_Settings' )
+			? SendToMP_Settings::get_confirmation_defaults()
+			: [ 'confirmation_logo_url' => '', 'confirmation_intro_message' => '' ];
+		$stored_logo     = (string) ( $settings['confirmation_logo_url'] ?? '' );
+		$stored_intro    = (string) ( $settings['confirmation_intro_message'] ?? '' );
+
 		$context = [
 			'mp_name'          => $mp_name,
 			'mp_constituency'  => $mp_constituency,
@@ -232,8 +241,8 @@ class SendToMP_Mailer {
 			'expiry_hours'     => $expiry_hours,
 			'message_subject'  => (string) $submission->message_subject,
 			'message_body'     => $preview_body_resolved,
-			'logo_url'         => (string) ( $settings['confirmation_logo_url'] ?? '' ),
-			'intro_message'    => (string) ( $settings['confirmation_intro_message'] ?? '' ),
+			'logo_url'         => '' !== $stored_logo ? $stored_logo : (string) $defaults['confirmation_logo_url'],
+			'intro_message'    => '' !== $stored_intro ? $stored_intro : (string) $defaults['confirmation_intro_message'],
 			'show_branding'    => SendToMP_License::should_show_branding(),
 		];
 
@@ -319,10 +328,14 @@ class SendToMP_Mailer {
 	 * strip or ignore <style> blocks in the head. Table-based layout
 	 * for Outlook. 600px max width.
 	 *
-	 * @param array $c Context built in send_confirmation().
+	 * Public so the admin settings preview can render the same HTML
+	 * with sample data without duplicating the template.
+	 *
+	 * @param array $c Context built in send_confirmation() or a sample
+	 *                 context from the Confirmation settings preview.
 	 * @return string
 	 */
-	private function render_confirmation_html( array $c ): string {
+	public function render_confirmation_html( array $c ): string {
 		$confirmation_url = esc_url( $c['confirmation_url'] );
 		$logo_url         = esc_url( $c['logo_url'] );
 		$site_name        = esc_html( $c['site_name'] );
