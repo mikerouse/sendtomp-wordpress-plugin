@@ -209,37 +209,43 @@ class SendToMP_Mailer {
 		$subject = apply_filters( 'sendtomp_confirmation_subject', $subject, $submission, $mp_name );
 
 		$confirmation_url = $this->get_confirmation_url( $token );
-		$expiry_hours     = sendtomp()->get_setting( 'confirmation_expiry' );
+		$expiry_hours     = (int) sendtomp()->get_setting( 'confirmation_expiry' );
 
-		$location_label = ! empty( $mp_constituency ) ? " ({$mp_constituency})" : '';
-		// Confirmation email is always plain text — strip any HTML that
-		// may be present in the message body (from a WYSIWYG template)
-		// so the preview reads cleanly.
-		$preview_body = wp_strip_all_tags( (string) $submission->message_body, true );
+		// The feed resolves GF merge tags at submission time, but the
+		// message body may still contain SendToMP tokens ({mp_name},
+		// {mp_constituency}, etc.) that only fill in once the postcode
+		// is resolved. Resolve them now so the preview the constituent
+		// sees matches what will actually reach the MP.
+		$preview_body_resolved = $this->replace_placeholders( (string) $submission->message_body, $submission );
+		$preview_body_resolved = $this->strip_unresolved_merge_tags( $preview_body_resolved );
 
-		$body  = "You recently submitted a message to {$mp_name}{$location_label} via " . get_bloginfo( 'name' ) . ".\n\n";
-		$body .= "Please confirm you want to send this message by clicking the link below:\n\n";
-		$body .= $confirmation_url . "\n\n";
-		$body .= "--- Your message preview ---\n\n";
-		$body .= "Subject: {$submission->message_subject}\n\n";
-		$body .= $preview_body . "\n\n";
-		$body .= "---\n\n";
-		$body .= "This link will expire in {$expiry_hours} hours.\n\n";
-		$body .= "If you did not submit this message, you can safely ignore this email.\n";
-
-		if ( SendToMP_License::should_show_branding() ) {
-			$body .= "\n---\nPowered by Bluetorch's SendToMP — verified constituent correspondence.\n";
-		}
-
-		$settings  = sendtomp()->get_settings();
+		$settings   = sendtomp()->get_settings();
 		$from_name  = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_name'] ?? '' ) );
 		$from_email = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_email'] ?? '' ) );
+
+		$context = [
+			'mp_name'          => $mp_name,
+			'mp_constituency'  => $mp_constituency,
+			'location_label'   => '' !== $mp_constituency ? " ({$mp_constituency})" : '',
+			'site_name'        => get_bloginfo( 'name' ),
+			'confirmation_url' => $confirmation_url,
+			'expiry_hours'     => $expiry_hours,
+			'message_subject'  => (string) $submission->message_subject,
+			'message_body'     => $preview_body_resolved,
+			'logo_url'         => (string) ( $settings['confirmation_logo_url'] ?? '' ),
+			'intro_message'    => (string) ( $settings['confirmation_intro_message'] ?? '' ),
+			'show_branding'    => SendToMP_License::should_show_branding(),
+		];
+
+		$html = $this->render_confirmation_html( $context );
+		$text = $this->render_confirmation_text( $context );
 
 		$result = $this->dispatch( [
 			'to'      => [ 'email' => $to ],
 			'from'    => [ 'email' => $from_email, 'name' => $from_name ],
 			'subject' => $subject,
-			'text'    => $body,
+			'text'    => $text,
+			'html'    => $html,
 		] );
 
 		if ( true !== $result ) {
@@ -249,6 +255,190 @@ class SendToMP_Mailer {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Remove any GF-style merge tags (e.g. "{Post Code:4}") that survived
+	 * feed processing because they referenced fields that no longer exist.
+	 * Leaving them in the preview is confusing and embarrassing.
+	 *
+	 * @param string $body Resolved message body.
+	 * @return string
+	 */
+	private function strip_unresolved_merge_tags( string $body ): string {
+		// Match "{Label:id}" or "{Label:id:modifier}" — the GF merge-tag shape.
+		return (string) preg_replace( '/\{[^{}\n]+:\d+(?::[^{}\n]*)?\}/', '', $body );
+	}
+
+	/**
+	 * Build the plain-text fallback version of the confirmation email.
+	 *
+	 * Kept as multipart/alternative so providers that send both parts
+	 * (Brevo) give subscribers the accessible option, and clients that
+	 * prefer plain text over HTML get a clean read.
+	 *
+	 * @param array $c Context built in send_confirmation().
+	 * @return string
+	 */
+	private function render_confirmation_text( array $c ): string {
+		$body  = sprintf(
+			/* translators: 1: MP name + constituency, 2: site name. */
+			__( "You recently submitted a message to %1\$s via %2\$s.", 'sendtomp' ),
+			$c['mp_name'] . $c['location_label'],
+			$c['site_name']
+		) . "\n\n";
+
+		if ( '' !== $c['intro_message'] ) {
+			$body .= wp_strip_all_tags( $c['intro_message'], true ) . "\n\n";
+		}
+
+		$body .= __( 'Please confirm you want to send this message by clicking the link below:', 'sendtomp' ) . "\n\n";
+		$body .= $c['confirmation_url'] . "\n\n";
+		$body .= __( '--- Your message preview ---', 'sendtomp' ) . "\n\n";
+		$body .= sprintf( __( 'Subject: %s', 'sendtomp' ), $c['message_subject'] ) . "\n\n";
+		$body .= wp_strip_all_tags( $c['message_body'], true ) . "\n\n";
+		$body .= "---\n\n";
+		$body .= sprintf(
+			/* translators: %d: number of hours. */
+			_n( 'This link expires in %d hour.', 'This link expires in %d hours.', $c['expiry_hours'], 'sendtomp' ),
+			$c['expiry_hours']
+		) . "\n\n";
+		$body .= __( "If you did not submit this message, you can safely ignore this email.", 'sendtomp' ) . "\n";
+
+		if ( $c['show_branding'] ) {
+			$body .= "\n---\n" . __( "Powered by Bluetorch's SendToMP — verified constituent correspondence.", 'sendtomp' ) . "\n";
+		}
+
+		return $body;
+	}
+
+	/**
+	 * Build the rich HTML confirmation email.
+	 *
+	 * Uses inline styles everywhere — Gmail, Yahoo, and most clients
+	 * strip or ignore <style> blocks in the head. Table-based layout
+	 * for Outlook. 600px max width.
+	 *
+	 * @param array $c Context built in send_confirmation().
+	 * @return string
+	 */
+	private function render_confirmation_html( array $c ): string {
+		$confirmation_url = esc_url( $c['confirmation_url'] );
+		$logo_url         = esc_url( $c['logo_url'] );
+		$site_name        = esc_html( $c['site_name'] );
+		$mp_name          = esc_html( $c['mp_name'] );
+		$mp_constituency  = esc_html( $c['mp_constituency'] );
+		$location_label   = '' !== $c['mp_constituency'] ? ' <span style="color:#6b7280;">(' . $mp_constituency . ')</span>' : '';
+		$message_subject  = esc_html( $c['message_subject'] );
+		$message_body     = nl2br( esc_html( $c['message_body'] ) );
+		$intro_message    = wp_kses_post( $c['intro_message'] );
+		$bluetorch_logo   = esc_url( SENDTOMP_PLUGIN_URL . 'assets/images/providers/bluetorch.svg' );
+		$expiry_hours     = (int) $c['expiry_hours'];
+		$expiry_line      = esc_html( sprintf(
+			_n( 'This link expires in %d hour.', 'This link expires in %d hours.', $expiry_hours, 'sendtomp' ),
+			$expiry_hours
+		) );
+
+		ob_start();
+		?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title><?php echo esc_html( sprintf( __( 'Please confirm your message to %s', 'sendtomp' ), $c['mp_name'] ) ); ?></title>
+</head>
+<body style="margin:0; padding:0; background:#f3f4f6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; color:#1f2937; -webkit-font-smoothing:antialiased;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f4f6; padding:24px 12px;">
+	<tr>
+		<td align="center">
+			<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+				<?php if ( '' !== $logo_url ) : ?>
+				<tr>
+					<td style="padding:28px 32px 20px; text-align:center; border-bottom:1px solid #e5e7eb;">
+						<img src="<?php echo $logo_url; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already esc_url'd. ?>" alt="<?php echo esc_attr( $c['site_name'] ); ?>" style="max-height:56px; max-width:320px; width:auto; height:auto; display:inline-block; border:0;" />
+					</td>
+				</tr>
+				<?php endif; ?>
+
+				<tr>
+					<td style="padding:32px 32px 8px;">
+						<?php if ( '' !== trim( wp_strip_all_tags( $intro_message ) ) ) : ?>
+						<div style="margin:0 0 24px; padding:16px 20px; background:#eff6ff; border-left:4px solid #3b82f6; border-radius:4px; font-size:15px; line-height:1.5;">
+							<?php echo $intro_message; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_kses_post'd. ?>
+						</div>
+						<?php endif; ?>
+
+						<h1 style="margin:0 0 12px; font-size:22px; line-height:1.3; font-weight:600; color:#111827;">
+							<?php echo esc_html__( 'Confirm your message to', 'sendtomp' ); ?> <?php echo $mp_name; // phpcs:ignore ?><?php echo $location_label; // phpcs:ignore ?>
+						</h1>
+						<p style="margin:0 0 20px; font-size:15px; line-height:1.55; color:#374151;">
+							<?php
+							/* translators: %s: site name. */
+							echo esc_html( sprintf( __( 'You recently submitted this message via %s. Your message won\'t reach your MP until you confirm below.', 'sendtomp' ), $c['site_name'] ) );
+							?>
+						</p>
+
+						<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 28px;">
+							<tr>
+								<td style="background:#0073aa; border-radius:6px;">
+									<a href="<?php echo $confirmation_url; // phpcs:ignore ?>" style="display:inline-block; padding:14px 28px; color:#ffffff; text-decoration:none; font-weight:600; font-size:16px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+										<?php esc_html_e( 'Confirm and send my message', 'sendtomp' ); ?>
+									</a>
+								</td>
+							</tr>
+						</table>
+
+						<p style="margin:0 0 4px; font-size:13px; line-height:1.5; color:#6b7280;">
+							<?php echo $expiry_line; ?>
+						</p>
+						<p style="margin:0 0 8px; font-size:13px; line-height:1.5; color:#6b7280;">
+							<?php esc_html_e( "If you didn't submit this message, you can safely ignore this email.", 'sendtomp' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<td style="padding:8px 32px 32px;">
+						<div style="background:#f9fafb; border:1px solid #e5e7eb; border-left:4px solid #0073aa; border-radius:4px; padding:20px 24px;">
+							<p style="margin:0 0 12px; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6b7280;">
+								<?php esc_html_e( 'Preview of your message', 'sendtomp' ); ?>
+							</p>
+							<p style="margin:0 0 4px; font-size:13px; color:#6b7280;">
+								<?php esc_html_e( 'Subject', 'sendtomp' ); ?>
+							</p>
+							<p style="margin:0 0 16px; font-size:15px; font-weight:600; color:#111827;">
+								<?php echo $message_subject; ?>
+							</p>
+							<p style="margin:0 0 4px; font-size:13px; color:#6b7280;">
+								<?php esc_html_e( 'Body', 'sendtomp' ); ?>
+							</p>
+							<div style="font-size:14px; line-height:1.6; color:#1f2937; white-space:normal;">
+								<?php echo $message_body; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- nl2br + esc_html. ?>
+							</div>
+						</div>
+					</td>
+				</tr>
+
+				<?php if ( $c['show_branding'] ) : ?>
+				<tr>
+					<td style="padding:20px 32px; background:#f9fafb; border-top:1px solid #e5e7eb; text-align:center;">
+						<a href="https://bluetorch.co.uk/sendtomp" style="text-decoration:none; color:inherit; display:inline-block;">
+							<img src="<?php echo $bluetorch_logo; // phpcs:ignore ?>" alt="Bluetorch" height="24" style="max-height:24px; width:auto; display:inline-block; vertical-align:middle; border:0;" />
+							<span style="color:#6b7280; font-size:12px; line-height:24px; vertical-align:middle; margin-left:8px;">
+								<?php esc_html_e( 'Powered by SendToMP — verified constituent correspondence', 'sendtomp' ); ?>
+							</span>
+						</a>
+					</td>
+				</tr>
+				<?php endif; ?>
+			</table>
+		</td>
+	</tr>
+</table>
+</body>
+</html>
+		<?php
+		return (string) ob_get_clean();
 	}
 
 	private function replace_placeholders( string $template, SendToMP_Submission $submission ): string {

@@ -383,6 +383,31 @@ class SendToMP_Settings {
 				'description' => __( 'Shown after the constituent confirms and their message is sent to the MP. Use this to thank them, explain what to expect next, and encourage social sharing. Leave blank for the default message.', 'sendtomp' ),
 			]
 		);
+
+		add_settings_field(
+			'confirmation_logo_url',
+			__( 'Confirmation Email Logo', 'sendtomp' ),
+			[ $this, 'render_text_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key'         => 'confirmation_logo_url',
+				'type'        => 'url',
+				'description' => __( 'URL of a logo image to show at the top of the confirmation email. Keep it under 400px wide for good rendering in email clients. PNG or JPEG recommended (SVG may not render in older Outlook).', 'sendtomp' ),
+			]
+		);
+
+		add_settings_field(
+			'confirmation_intro_message',
+			__( 'Confirmation Email Intro', 'sendtomp' ),
+			[ $this, 'render_textarea_field' ],
+			'sendtomp',
+			$section,
+			[
+				'key'         => 'confirmation_intro_message',
+				'description' => __( 'Optional message shown at the top of the confirmation email, above the "confirm your message" body. Plain text or basic HTML (links, bold, paragraphs). Leave blank to skip.', 'sendtomp' ),
+			]
+		);
 	}
 
 	/**
@@ -1465,6 +1490,14 @@ TEXT;
 
 		if ( isset( $input['thankyou_message'] ) ) {
 			$sanitized['thankyou_message'] = wp_kses_post( $input['thankyou_message'] );
+		}
+
+		if ( isset( $input['confirmation_logo_url'] ) ) {
+			$sanitized['confirmation_logo_url'] = esc_url_raw( (string) $input['confirmation_logo_url'] );
+		}
+
+		if ( isset( $input['confirmation_intro_message'] ) ) {
+			$sanitized['confirmation_intro_message'] = wp_kses_post( (string) $input['confirmation_intro_message'] );
 		}
 
 		// Rate limits.

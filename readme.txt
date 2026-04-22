@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.2
+Stable tag: 1.6.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,13 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.3 =
+* **Rich HTML confirmation email.** The email sent to constituents asking them to confirm their message is now a branded, responsive HTML email with a prominent "Confirm and send my message" button and a styled preview of the message as it will reach the MP. Plain-text fallback is still sent alongside for accessibility and older clients.
+* **Customisable confirmation email** — two new fields on the Confirmation tab: "Confirmation Email Logo" (URL to a site logo shown at the top of the email) and "Confirmation Email Intro" (optional message shown above the confirmation body, supports basic HTML). Themes for further customisation are on the roadmap.
+* Fix: SendToMP tokens (`{mp_name}`, `{mp_constituency}`, etc.) inside the message preview shown to the constituent are now resolved at confirmation-send time — previously the constituent saw the raw placeholders in their preview.
+* Fix: any Gravity Forms merge tags (`{Post Code:4}` etc.) that survived feed processing because they referenced deleted fields are now stripped from the preview rather than shown as literal text.
+* Footer of the confirmation email uses the Bluetorch logo (unless the Pro "Hide Bluetorch branding" setting is on).
 
 = 1.6.2 =
 * Fix the "Find My MP" custom field not being used for postcode lookup when a feed also had a legacy `fieldMap_constituent_postcode` mapping pointing at a deleted text field. The custom field now takes priority over any feed mapping whenever it's present on the form — matching the drag-and-drop "just works" UX promise introduced in v1.5.0. Forms that still use a plain postcode text field plus a mapping continue to work unchanged.
@@ -258,6 +265,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.3 =
+Rich HTML confirmation email, with customisable logo and intro message on the Confirmation tab. Placeholders now resolve properly in the message preview.
 
 = 1.6.2 =
 Fixes a bug where forms migrated to the "Find My MP" field kept failing postcode lookup because the old feed mapping was overriding it.
