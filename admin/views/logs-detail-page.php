@@ -83,9 +83,15 @@ $sendtomp_header_hide_tagline = true;
 				<?php endforeach; ?>
 			</table>
 
-			<?php if ( ! empty( $entry->error_message ) ) : ?>
-				<h3><?php esc_html_e( 'Error detail', 'sendtomp' ); ?></h3>
-				<pre class="sendtomp-log-error"><?php echo esc_html( (string) $entry->error_message ); ?></pre>
+			<?php if ( ! empty( $entry->error_message ) ) :
+				$is_error_status = in_array( $status, [ 'error', 'failed' ], true );
+				$note_heading    = $is_error_status
+					? __( 'Error detail', 'sendtomp' )
+					: __( 'Notes', 'sendtomp' );
+				$note_class      = $is_error_status ? 'sendtomp-log-error' : 'sendtomp-log-note';
+				?>
+				<h3><?php echo esc_html( $note_heading ); ?></h3>
+				<pre class="<?php echo esc_attr( $note_class ); ?>"><?php echo esc_html( (string) $entry->error_message ); ?></pre>
 			<?php endif; ?>
 		</div>
 

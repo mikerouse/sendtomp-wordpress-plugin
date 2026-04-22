@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.6.6
+Stable tag: 1.6.7
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,10 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.7 =
+* **Auto-resend on duplicate submissions.** When a constituent fills in the form a second time before confirming the first submission (most often because they didn't see the first confirmation email), SendToMP now detects the existing pending record and re-sends the original confirmation email using the same token — no duplicate pending record, no opaque "duplicate submission" error, just a fresh email in their inbox.
+* The submission log records the auto-resend as a regular Pending confirmation row with a friendly informational note ("Re-sent the existing confirmation email after the constituent resubmitted…"). Error-row highlighting is now scoped to actual Error / Failed statuses, so these informational rows aren't styled as failures.
 
 = 1.6.6 =
 * **Submission log overhaul.** The log tab is no longer just a read-only table:
@@ -283,6 +287,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.7 =
+Re-submitted the form because you didn't see the confirmation email? SendToMP now re-sends it automatically instead of rejecting the re-submission.
 
 = 1.6.6 =
 Submission log overhaul: detail view with full error messages, colour-coded status pills, resend confirmation, delete, and a CSV export button.

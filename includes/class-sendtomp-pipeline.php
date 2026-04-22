@@ -40,6 +40,47 @@ class SendToMP_Pipeline {
 			return $valid;
 		}
 
+		// 2b. Already-pending short circuit (skipped on direct-send path).
+		//
+		// A re-submission from a constituent who hasn't yet clicked the
+		// link in their first confirmation email is almost always a
+		// "I didn't get your email" attempt, not a fresh intent. Instead
+		// of rejecting with an opaque "duplicate" error, re-send the
+		// existing pending record's confirmation email (same token, no
+		// new DB row in sendtomp_pending) so the constituent gets a
+		// fresh copy in their inbox and can continue.
+		if ( ! $skip_confirmation ) {
+			$existing = ( new SendToMP_Confirmation() )->get_latest_pending_by_email( $submission->constituent_email );
+			if ( ! is_wp_error( $existing ) ) {
+				$resent = ( new SendToMP_Mailer() )->send_confirmation(
+					$existing['submission'],
+					(string) ( $existing['token'] ?? '' ),
+					(string) ( $existing['resolved_member']['name'] ?? '' ),
+					(string) ( $existing['resolved_member']['constituency'] ?? '' )
+				);
+
+				if ( ! is_wp_error( $resent ) ) {
+					// Re-use the already-resolved member on the new submission so the log row
+					// names the right MP instead of showing a blank "MP / Peer" column.
+					$submission->resolved_member = $existing['resolved_member'];
+					if ( isset( $existing['resolved_member']['id'] ) ) {
+						$submission->target_member_id = (int) $existing['resolved_member']['id'];
+					}
+
+					SendToMP_Logger::log(
+						$submission,
+						'pending_confirmation',
+						__( 'Re-sent the existing confirmation email after the constituent resubmitted the form before confirming the first one.', 'sendtomp' )
+					);
+
+					return new WP_Error(
+						'pending_resent',
+						__( 'We already have your message waiting — we\'ve just re-sent the confirmation email. Please check your inbox (and spam folder) and click the confirmation link to send your message to your MP.', 'sendtomp' )
+					);
+				}
+			}
+		}
+
 		// 3. Rate-limit check.
 		$rate_check = ( new SendToMP_Rate_Limiter() )->check( $submission );
 		if ( is_wp_error( $rate_check ) ) {

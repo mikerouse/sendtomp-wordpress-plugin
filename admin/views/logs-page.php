@@ -116,13 +116,14 @@ $export_url = add_query_arg( [
 		</thead>
 		<tbody>
 			<?php foreach ($items as $item) :
-				$view_url    = admin_url( 'admin.php?page=sendtomp-log&view=' . (int) $item->id );
-				$status      = (string) $item->delivery_status;
-				$pill_class  = 'sendtomp-status-pill sendtomp-status-pill--' . sanitize_html_class( $status );
-				$has_error   = ! empty( $item->error_message );
-				$error_short = $has_error ? wp_trim_words( (string) $item->error_message, 10, ' …' ) : '';
+				$view_url        = admin_url( 'admin.php?page=sendtomp-log&view=' . (int) $item->id );
+				$status          = (string) $item->delivery_status;
+				$pill_class      = 'sendtomp-status-pill sendtomp-status-pill--' . sanitize_html_class( $status );
+				$has_note        = ! empty( $item->error_message );
+				$is_error_status = in_array( $status, [ 'error', 'failed' ], true );
+				$note_short      = $has_note ? wp_trim_words( (string) $item->error_message, 10, ' …' ) : '';
 			?>
-				<tr<?php echo $has_error ? ' class="sendtomp-log-row--has-error"' : ''; ?>>
+				<tr<?php echo ( $has_note && $is_error_status ) ? ' class="sendtomp-log-row--has-error"' : ''; ?>>
 					<td class="column-date">
 						<a href="<?php echo esc_url( $view_url ); ?>">
 							<?php echo esc_html( date_i18n( get_option('date_format') . ' ' . get_option('time_format'), strtotime( $item->created_at ) ) ); ?>
@@ -140,9 +141,9 @@ $export_url = add_query_arg( [
 						<span class="<?php echo esc_attr( $pill_class ); ?>">
 							<?php echo esc_html( ucfirst( str_replace( '_', ' ', $status ) ) ); ?>
 						</span>
-						<?php if ( $has_error ) : ?>
-							<div class="sendtomp-log-error-preview" title="<?php echo esc_attr( $item->error_message ); ?>">
-								<?php echo esc_html( $error_short ); ?>
+						<?php if ( $has_note ) : ?>
+							<div class="sendtomp-log-note-preview <?php echo $is_error_status ? 'sendtomp-log-note-preview--error' : 'sendtomp-log-note-preview--info'; ?>" title="<?php echo esc_attr( $item->error_message ); ?>">
+								<?php echo esc_html( $note_short ); ?>
 							</div>
 						<?php endif; ?>
 					</td>
