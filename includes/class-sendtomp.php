@@ -31,6 +31,10 @@ class SendToMP {
 
 		$this->detect_adapters();
 
+		// Boot the selected email-delivery provider so its hooks (e.g.
+		// phpmailer_init for Custom SMTP) register before any send.
+		( new SendToMP_Mailer() )->boot_selected_provider();
+
 		// Confirmation flow must be loaded on both frontend and admin.
 		new SendToMP_Confirmation();
 

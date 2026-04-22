@@ -116,7 +116,7 @@ if ( $smtp_plugin ) {
 		'subtitle'   => __( 'Active SMTP plugin handles delivery.', 'sendtomp' ),
 		'badge'      => __( 'Detected', 'sendtomp' ),
 		'badge_kind' => 'success',
-		'logo'       => $tile_slug . '.png',
+		'logo'       => $tile_slug . '.svg',
 		'disabled'   => false,
 	];
 }
@@ -127,7 +127,7 @@ $tiles[] = [
 	'subtitle'   => __( 'Direct API — parliamentary-grade deliverability.', 'sendtomp' ),
 	'badge'      => __( 'Recommended', 'sendtomp' ),
 	'badge_kind' => 'info',
-	'logo'       => 'brevo.png',
+	'logo'       => 'brevo.svg',
 	'disabled'   => false,
 ];
 
@@ -136,7 +136,7 @@ $tiles[] = [
 	'name'       => __( 'Custom SMTP', 'sendtomp' ),
 	'subtitle'   => __( 'Bring your own host, port, and credentials.', 'sendtomp' ),
 	'badge'      => '',
-	'logo'       => 'custom-smtp.png',
+	'logo'       => 'custom-smtp.svg',
 	'disabled'   => false,
 ];
 
@@ -146,7 +146,7 @@ $tiles[] = [
 	'subtitle'   => __( 'Send via Gmail — coming in v1.7.', 'sendtomp' ),
 	'badge'      => __( 'Pro', 'sendtomp' ),
 	'badge_kind' => 'pro',
-	'logo'       => 'google-workspace.png',
+	'logo'       => 'google-workspace.svg',
 	'disabled'   => true,
 ];
 
@@ -156,7 +156,7 @@ $tiles[] = [
 	'subtitle'   => __( 'Send via Microsoft 365 — coming in v1.8.', 'sendtomp' ),
 	'badge'      => __( 'Pro', 'sendtomp' ),
 	'badge_kind' => 'pro',
-	'logo'       => 'office365.png',
+	'logo'       => 'office365.svg',
 	'disabled'   => true,
 ];
 
@@ -165,7 +165,7 @@ $tiles[] = [
 	'name'       => __( 'Default (wp_mail)', 'sendtomp' ),
 	'subtitle'   => __( 'Not recommended — unreliable for MP inboxes.', 'sendtomp' ),
 	'badge'      => '',
-	'logo'       => 'wp-mail.png',
+	'logo'       => 'wp-mail.svg',
 	'disabled'   => false,
 ];
 ?>

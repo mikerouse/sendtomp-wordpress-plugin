@@ -6,6 +6,68 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class SendToMP_Mailer {
 
+	/**
+	 * Instantiate (and cache) the provider selected in settings.
+	 *
+	 * Falls back to wp_mail passthrough when the configured provider
+	 * isn't ready (e.g. Brevo selected but API key missing) so the
+	 * plugin never goes silent on a mis-configuration.
+	 *
+	 * @return SendToMP_Provider_Interface
+	 */
+	public function get_provider(): SendToMP_Provider_Interface {
+		static $cached = null;
+		if ( null !== $cached ) {
+			return $cached;
+		}
+
+		$selected = (string) sendtomp()->get_setting( 'smtp_provider' );
+
+		switch ( $selected ) {
+			case 'brevo':
+				$candidate = new SendToMP_Provider_Brevo();
+				break;
+			case 'smtp_custom':
+				$candidate = new SendToMP_Provider_SMTP();
+				break;
+			case 'smtp_plugin':
+				$candidate = new SendToMP_Provider_WP_Mail( 'smtp_plugin' );
+				break;
+			case 'wp_mail':
+			default:
+				$candidate = new SendToMP_Provider_WP_Mail( 'wp_mail' );
+				break;
+		}
+
+		if ( ! $candidate->is_configured() ) {
+			$candidate = new SendToMP_Provider_WP_Mail( 'wp_mail' );
+		}
+
+		$cached = $candidate;
+		return $cached;
+	}
+
+	/**
+	 * Boot the selected provider so its hooks (e.g. phpmailer_init for
+	 * Custom SMTP) register before any send happens. Called from
+	 * SendToMP::init() at plugins_loaded:20.
+	 *
+	 * @return void
+	 */
+	public function boot_selected_provider(): void {
+		$this->get_provider()->boot();
+	}
+
+	/**
+	 * Send a canonical message via the configured provider.
+	 *
+	 * @param array $message See SendToMP_Provider_Interface for shape.
+	 * @return bool|WP_Error
+	 */
+	public function dispatch( array $message ) {
+		return $this->get_provider()->send( $message );
+	}
+
 	public function send_to_mp( SendToMP_Submission $submission ) {
 		$settings = sendtomp()->get_settings();
 
@@ -13,22 +75,19 @@ class SendToMP_Mailer {
 		$from_name  = str_replace( [ "\r", "\n" ], '', $settings['from_name'] );
 		$from_email = str_replace( [ "\r", "\n" ], '', $settings['from_email'] );
 
-		$headers = [];
-		$headers[] = 'From: ' . $from_name . ' <' . $from_email . '>';
-
 		if ( 'constituent' === $settings['reply_to'] ) {
-			$headers[] = 'Reply-To: ' . $submission->constituent_email;
+			$reply_email = $submission->constituent_email;
 		} else {
 			// 'fixed' mode — use the configured reply_to_email, falling back to from_email.
 			$reply_email = ! empty( $settings['reply_to_email'] ) ? $settings['reply_to_email'] : $settings['from_email'];
-			$headers[] = 'Reply-To: ' . $reply_email;
 		}
 
+		$bcc_addrs = [];
 		if ( ! empty( $settings['bcc_emails'] ) && sendtomp()->can( 'bcc' ) ) {
 			$bcc_list = array_map( 'trim', explode( ',', $settings['bcc_emails'] ) );
 			foreach ( $bcc_list as $bcc ) {
 				if ( is_email( $bcc ) ) {
-					$headers[] = 'BCC: ' . $bcc;
+					$bcc_addrs[] = [ 'email' => $bcc ];
 				}
 			}
 		}
@@ -51,27 +110,37 @@ class SendToMP_Mailer {
 			return new WP_Error( 'no_delivery_email', __( 'No delivery email address found for this MP.', 'sendtomp' ) );
 		}
 
-		$to = $submission->resolved_member['delivery_email'];
-
-		// Detect whether the body has Markdown formatting or existing
-		// HTML tags. In either case, render as HTML email; otherwise
-		// keep plain text for maximum deliverability.
+		// Decide text vs HTML rendering based on the body content.
 		$has_markdown = $this->body_has_markdown_formatting( $body );
 		$has_html     = $this->body_contains_html( $body );
 
+		$text_body = $body;
+		$html_body = null;
+
 		if ( $has_markdown || $has_html ) {
-			$headers[] = 'Content-Type: text/html; charset=UTF-8';
-			if ( $has_markdown ) {
-				$body = $this->markdown_to_html( $body );
-			} else {
-				$body = wpautop( $body );
-			}
+			$html_body = $has_markdown ? $this->markdown_to_html( $body ) : wpautop( $body );
+			// Keep a plain-text fallback for providers that accept both
+			// (Brevo does; wp_mail ignores the text variant when HTML is
+			// set via Content-Type). Strip markdown/html for readability.
+			$text_body = wp_strip_all_tags( $has_markdown ? $body : $html_body, true );
 		}
 
-		$sent = wp_mail( $to, $subject, $body, $headers );
+		$message = [
+			'to'       => [ 'email' => $submission->resolved_member['delivery_email'] ],
+			'from'     => [ 'email' => $from_email, 'name' => $from_name ],
+			'reply_to' => [ 'email' => $reply_email ],
+			'bcc'      => $bcc_addrs,
+			'subject'  => $subject,
+			'text'     => $text_body,
+			'html'     => $html_body,
+		];
 
-		if ( ! $sent ) {
-			return new WP_Error( 'send_failed', __( 'Your message could not be sent. Please try again later.', 'sendtomp' ) );
+		$result = $this->dispatch( $message );
+
+		if ( true !== $result ) {
+			return is_wp_error( $result )
+				? $result
+				: new WP_Error( 'send_failed', __( 'Your message could not be sent. Please try again later.', 'sendtomp' ) );
 		}
 
 		return true;
@@ -110,10 +179,21 @@ class SendToMP_Mailer {
 			$body .= "\n---\nPowered by Bluetorch's SendToMP — verified constituent correspondence.\n";
 		}
 
-		$sent = wp_mail( $to, $subject, $body );
+		$settings  = sendtomp()->get_settings();
+		$from_name  = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_name'] ?? '' ) );
+		$from_email = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_email'] ?? '' ) );
 
-		if ( ! $sent ) {
-			return new WP_Error( 'confirmation_failed', __( 'We could not send a confirmation email. Please check your email address and try again.', 'sendtomp' ) );
+		$result = $this->dispatch( [
+			'to'      => [ 'email' => $to ],
+			'from'    => [ 'email' => $from_email, 'name' => $from_name ],
+			'subject' => $subject,
+			'text'    => $body,
+		] );
+
+		if ( true !== $result ) {
+			return is_wp_error( $result )
+				? $result
+				: new WP_Error( 'confirmation_failed', __( 'We could not send a confirmation email. Please check your email address and try again.', 'sendtomp' ) );
 		}
 
 		return true;
@@ -203,13 +283,34 @@ class SendToMP_Mailer {
 	}
 
 	public function send_test_email( string $to ) {
-		$subject = 'SendToMP Test Email';
-		$body    = 'This is a test email from SendToMP to verify your email configuration is working correctly.';
+		$provider_id = $this->get_provider()->get_id();
 
-		$sent = wp_mail( $to, $subject, $body );
+		$settings   = sendtomp()->get_settings();
+		$from_name  = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_name'] ?? '' ) );
+		$from_email = str_replace( [ "\r", "\n" ], '', (string) ( $settings['from_email'] ?? '' ) );
 
-		if ( ! $sent ) {
-			return new WP_Error( 'test_email_failed', __( 'The test email could not be sent. Please check your email configuration.', 'sendtomp' ) );
+		$subject = sprintf(
+			/* translators: %s: provider id (e.g. "brevo", "smtp_custom"). */
+			__( 'SendToMP test email (via %s)', 'sendtomp' ),
+			$provider_id
+		);
+		$body = sprintf(
+			/* translators: %s: provider id. */
+			__( "This is a test email from SendToMP to verify your email configuration is working correctly.\n\nDelivered via: %s", 'sendtomp' ),
+			$provider_id
+		);
+
+		$result = $this->dispatch( [
+			'to'      => [ 'email' => $to ],
+			'from'    => [ 'email' => $from_email, 'name' => $from_name ],
+			'subject' => $subject,
+			'text'    => $body,
+		] );
+
+		if ( true !== $result ) {
+			return is_wp_error( $result )
+				? $result
+				: new WP_Error( 'test_email_failed', __( 'The test email could not be sent. Please check your email configuration.', 'sendtomp' ) );
 		}
 
 		return true;

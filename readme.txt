@@ -3,7 +3,7 @@ Contributors: binarybeagle
 Tags: mp, parliament, democracy, constituency, advocacy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 1.5.1
+Stable tag: 1.6.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -101,6 +101,14 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 5. Custom field type in Gravity Forms
 
 == Changelog ==
+
+= 1.6.0 =
+* **New: provider tile picker on the Email Delivery tab.** Site owners now choose how SendToMP sends mail from a visual grid of options — detected SMTP plugin (passthrough), Brevo via direct HTTP API, Custom SMTP with your own host/port/credentials, Google Workspace (coming v1.7, Pro), Office 365 (coming v1.8, Pro), or the WordPress default fallback. Selecting a tile reveals that provider's config panel; SendToMP dispatches sends through the chosen provider. No more "read the docs and install a second plugin" shuffle.
+* **New: built-in Brevo integration** (recommended for parliamentary deliverability). Paste your Brevo v3 API key and every MP message and confirmation email is sent via the Brevo transactional HTTP API — better deliverability, bounce handling, and observability than raw SMTP.
+* **New: bring-your-own SMTP.** Enter host, port, encryption, username, and password directly in SendToMP without needing a separate SMTP plugin. Credentials are encrypted at rest via AES-256-GCM (optionally with an external key via the `SENDTOMP_SECRET_KEY` wp-config constant) so a database dump doesn't leak them. Defers gracefully when a dedicated SMTP plugin is also active.
+* **New: branded admin header.** Every SendToMP admin page now opens with the SendToMP logo, tagline, and a version chip — the utility plugin is starting to feel like a product.
+* Assets served by the admin now cache-bust on file mtime, so CSS/JS tweaks within a release cycle land in browsers immediately instead of waiting on a version bump.
+* Under the hood: mailer refactored around a provider interface (`SendToMP_Provider_Interface`), new `SendToMP_Secret` helper for encrypted settings, and a `SendToMP_Mailer::dispatch()` seam that routes every send through the selected provider. Ground-work for the Pro-tier Google Workspace and Office 365 OAuth flows landing in v1.7 and v1.8.
 
 = 1.5.1 =
 * The "Find My MP" field now shows its own helper text in the form editor sidebar ("Allows users to find their MP by entering their UK post code") instead of the generic Single Line Text description inherited from Gravity Forms.
@@ -242,6 +250,9 @@ Yes. When installed from WordPress.org, you can enable auto-updates from the Plu
 * Licence key activation and tier-based feature gating
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+New Email Delivery provider picker — choose from Brevo (direct API), Custom SMTP, or your existing SMTP plugin. Branded admin header. Encrypted storage for API keys and SMTP passwords.
 
 = 1.5.1 =
 Small polish: the Find My MP field now has its own description in the form editor instead of the generic "single line of text" text.
