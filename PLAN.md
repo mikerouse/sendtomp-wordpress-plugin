@@ -1,147 +1,133 @@
-# SendToMP v1.6.0 — Email Delivery UX, bring-your-own SMTP, OAuth providers, branded admin header
+# SendToMP — Roadmap after 2026-04-22 session
 
-**Status:** planning — awaiting Mike's calls on the flagged decisions.
-**Author:** Claude, 2026-04-22 (post-v1.5.1)
-
----
-
-## The problem in one paragraph
-
-The current Email Delivery tab tells site owners "install an SMTP plugin" and leaves them to it. That's two hurdles: they have to evaluate/install a *second* plugin and then configure it with credentials our plugin can't help with. Meanwhile, WP Mail SMTP has set the UX bar visibly higher with provider tiles, click-to-OAuth for Google Workspace and Office 365, and direct-in-plugin SMTP entry. We should close most of that gap in v1.6 so the path from "just installed SendToMP" to "emails are being delivered" can happen without leaving our settings screen. Plus, the plugin's admin pages currently show a plain `<h1>SendToMP v1.5.1</h1>` — with a 2000×1000 logo now in hand, we should brand the header while we're in the area.
+**Status:** next session starts here.
+**Previous session wrapped at:** v1.6.7, 2026-04-22.
 
 ---
 
-## Scope — four workstreams
+## Shipped this session (brief)
 
-### A. Branded admin header (cheap, ship it regardless)
+Ten releases, three feature arcs (GF field type, Email Delivery rebuild, Submission Log overhaul), plus one cascade of small polish fixes:
 
-Small, visual, zero risk.
+- **v1.5.0** — Custom "Find My MP" Gravity Forms field type (drag-and-drop from Advanced Fields; auto-detected as postcode source at submission time)
+- **v1.5.1** — Custom helper text on the field in the editor sidebar
+- **v1.6.0** — Email Delivery provider picker: Brevo (direct HTTP API), Custom SMTP (encrypted credentials), WP Mail fallback, branded admin header, mailer dispatcher refactor
+- **v1.6.1** — Status indicators + reworded notices (retired "install an SMTP plugin" nag when delivery is configured)
+- **v1.6.2** — MP Lookup field overrides stale feed mapping
+- **v1.6.3** — Rich HTML confirmation email + placeholder resolution fixes + Bluetorch logo footer
+- **v1.6.4** — Defaults + Media Library picker + live preview iframe on Confirmation tab
+- **v1.6.5** — Duplicate confirm CTA + stale postcode merge tag recovery
+- **v1.6.6** — Submission log overhaul: detail view, resend, delete, export CSV, status pills
+- **v1.6.7** — Auto-resend confirmation email on duplicate submissions
 
-- Partial `admin/views/partials/header.php` renders the logo + tagline + version chip, included at the top of every SendToMP admin view (replaces the current `<h1>` line in `admin/views/settings-page.php:22`, `logs-page.php`, `delivery-page.php`, `overrides-page.php`, `status-page.php`).
-- Uses `assets/icon-2000x1000.png` at `max-height: 64px` via the existing `assets/css/sendtomp-admin.css`.
-- The page-specific title (tab name, "Submission Log", etc.) moves to an `<h2>` under the header so it still reads as the page heading for screen readers.
-- No other behaviour changes.
-
-### B. Provider tile picker on the Email Delivery tab
-
-Replicate the WP Mail SMTP pattern (their second screenshot) in our own voice.
-
-**Providers we surface (in tile order):**
-
-| Tile | Path | Tier | Notes |
-|---|---|---|---|
-| **Detected SMTP plugin** (if active) | passthrough | Free | "Already handled by WP Mail SMTP / FluentSMTP / Post SMTP — nothing to do here." Detected → shown first, selected by default, no setup needed. |
-| **Brevo (recommended)** | direct HTTP API | Free | API-key entry. Uses Brevo's transactional-email HTTP endpoint directly — no SMTP layer. Tested send button. |
-| **Google Workspace** | OAuth | **Pro** | "Connect with Google" button. Sends via Gmail API. |
-| **Office 365 / Outlook** | OAuth | **Pro** | "Connect with Microsoft" button. Sends via Microsoft Graph `sendMail`. |
-| **Custom SMTP** | raw credentials | Free | Host / Port / Encryption / Auth / Username / Password. |
-| **Default (`wp_mail`)** | passthrough | Free | Fallback. Shown greyed-out with a warning. |
-
-**UX details:**
-
-- Single selection (radio-style). Switching providers shows that provider's config panel below the grid.
-- "Test email" button per configured provider — sends to the site admin email, shows success/error inline.
-- Each tile: logo (from `assets/images/providers/<slug>.svg` or `.png`) + name + tier badge ("Pro" for the OAuth tiles).
-- "Already using WP Mail SMTP / FluentSMTP? We'll defer to it — nothing to configure here" — this is a first-class explanatory state, not a fallback.
-
-### C. Bring-your-own SMTP (Custom SMTP tile)
-
-The baseline self-service path — matches expectations for anyone who's used any transactional email service.
-
-- Fields: Host, Port (default 587), Encryption (None / TLS / SSL), Auth (bool, default on), Username, Password.
-- Password stored encrypted in `wp_options`, wrapped with a site-salt key (re-use WP salts or a plugin-specific key). **Never** stored plaintext, never surfaced in `get_option()` output.
-- Integration: hook `phpmailer_init` to reconfigure PHPMailer only when our "Custom SMTP" provider is selected **and** no detected SMTP plugin is active (WP Mail SMTP's hook runs at priority 10; we run at priority 5 but bail if they already configured it).
-- Conflict handling: if a detected SMTP plugin is live, we *don't* override. We show that on the tile ("Custom SMTP is disabled — WP Mail SMTP is handling email delivery").
-
-### D. OAuth for Google Workspace + Office 365 (Pro)
-
-The expensive workstream. Worth scoping tightly.
-
-**Hosting model (recommend option 1):**
-
-1. **Centralised OAuth app on bluetorch.co.uk** — we register a Google Cloud project + Microsoft Entra app, publish/verify them once, and every SendToMP site uses *our* client ID. The redirect URI is `https://www.bluetorch.co.uk/sendtomp/oauth/<provider>/callback`, which bounces the auth code back to the specific site over HTTPS via a signed state parameter. This is how WP Mail SMTP Pro works, and it's the only path that gives click-to-connect UX.
-2. **BYO OAuth app** — the site owner registers their own Google Cloud project and pastes client ID + secret. No infra work for us. Much worse UX — most site owners have never touched Google Cloud Console.
-
-Picking option 1 means a one-time build on bluetorch.co.uk:
-
-- Two Next.js routes: `/sendtomp/oauth/google/authorize`, `/sendtomp/oauth/google/callback` (same pair for Microsoft)
-- Google Cloud project with OAuth 2.0 client credentials + Gmail API scope (`https://www.googleapis.com/auth/gmail.send`) + OAuth consent screen verification (this takes ~1-2 weeks for Google)
-- Microsoft Entra app registration with `Mail.Send` delegated permission + admin-consent workflow
-- Signed-state handshake: SendToMP generates a nonce, redirects to `bluetorch.co.uk/.../authorize?state=<signed-nonce>&return=<site-url>`, we forward to Google, on callback we verify the signed state and redirect back to the site with `?code=<auth_code>&state=<verified-nonce>`; plugin exchanges the code for tokens using our client secret via a server-side call to `bluetorch.co.uk/.../exchange`. Client secret never touches the site.
-
-**Token storage on the WP site:**
-
-- Access token + refresh token, encrypted identically to the Custom SMTP password.
-- Token refresh: on send, if expired, POST to `bluetorch.co.uk/.../refresh` with the refresh token (wrapped in HMAC-signed body); response has a new access token. Plugin never handles the client secret.
-- Revocation: "Disconnect" button on the tile calls the provider's revoke endpoint + clears local tokens.
-
-**Send path:**
-
-- Google: `POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send` with a base64-encoded RFC 5322 message, `Authorization: Bearer <access_token>`
-- Microsoft: `POST https://graph.microsoft.com/v1.0/me/sendMail` with a JSON `message` payload
-- Both bypass PHPMailer entirely — we build the MIME message ourselves for Gmail, or a Graph JSON payload for Microsoft.
-
-**Locked split:** v1.7.0 ships Google only; v1.8.0 ships Microsoft. In v1.6.0 the Google and Microsoft tiles render with "Coming in Pro" disabled state so the visual layout is final from day one.
+Every release deployed to untruecrime.uk testbed automatically via `deploy-testbed.yml`; every tag produced a ZIP via `release.yml`.
 
 ---
 
-## Decisions locked (2026-04-22)
+## Carried over (open follow-ups from this session's work)
 
-1. **OAuth hosting model — centralised on bluetorch.co.uk.** Underpins the premium value of Bluetorch's managed service layer; only path that gives click-to-connect UX.
-2. **Google + Microsoft OAuth — Pro tier only.** Infra cost and compliance burden justify the paywall.
-3. **Brevo — direct HTTP API.** Better deliverability and metrics. The Email Delivery tab must include a short "Why Brevo?" explainer so site owners understand why they're being asked to sign up for a third-party service (reputation-aware IPs, parliamentary-gateway deliverability, bounce handling — the reasons we already know).
-4. **Scope split agreed:**
-   - **v1.6.0** — workstreams A + B + C: branded header, provider tile picker, Custom SMTP, Brevo HTTP integration.
-   - **v1.7.0** — workstream D part 1: Google Workspace OAuth (centralised on bluetorch.co.uk).
-   - **v1.8.0** — workstream D part 2: Office 365 / Outlook OAuth.
-5. **Artwork** — Mike will deliver to `assets/images/providers/`. Folder created. Not blocking for build: tiles can ship with placeholder text rendering until art lands. Google's restricted-scope verification wait (1–2 weeks) noted; fine while we're pre-Pro-customer.
+Small items we consciously deferred while landing the bigger arcs:
 
----
-
-## Files we'll touch (v1.6.0 as proposed)
-
-| Path | Action | Notes |
-|---|---|---|
-| `assets/icon-2000x1000.png` | exists | Used in header partial at reduced size |
-| `assets/images/providers/` | new dir | Artwork drop zone (created) |
-| `admin/views/partials/header.php` | new | Logo + tagline + version chip |
-| `admin/views/settings-page.php` | modify | Include header partial; move `<h1>` to `<h2>` for tab title |
-| `admin/views/logs-page.php` | modify | Include header partial |
-| `admin/views/delivery-page.php` | **rewrite** | New tile-based picker + per-provider config panels |
-| `admin/views/overrides-page.php` | modify | Include header partial |
-| `admin/views/status-page.php` | modify | Include header partial |
-| `admin/class-sendtomp-settings.php` | modify | New settings: `smtp_provider`, `smtp_custom_host/port/...`, `smtp_brevo_api_key` (encrypted), Google/MS OAuth token fields stubbed |
-| `includes/class-sendtomp-mailer.php` | modify | Provider dispatch: Brevo HTTP path, Custom SMTP via phpmailer_init, fallthrough to wp_mail |
-| `includes/class-sendtomp-secret.php` | **new** | Shared encrypt/decrypt helper (AES-256-GCM using a site key derived from WP salts). Used for SMTP password + API keys + later OAuth tokens. |
-| `includes/class-sendtomp-provider-brevo.php` | **new** | Brevo HTTP transactional-email client |
-| `includes/class-sendtomp-provider-smtp-detect.php` | **new** | Detects active SMTP plugins |
-| `assets/css/sendtomp-admin.css` | modify | Header styling; provider tile grid |
-| `readme.txt` | modify | Stable tag, changelog |
-| `sendtomp.php` | modify | Version 1.6.0 |
+1. **Live JS preview on the Confirmation tab** — the preview iframe currently refreshes only on save. A debounced AJAX endpoint that re-renders `render_confirmation_html()` on field change would make the tab feel genuinely interactive. Scoped as a self-contained v1.6.8 — maybe half a day.
+2. **Confirmation email themes** — `render_confirmation_html()` is structured so adding alternative templates is a contained change (one template-selection setting + a switch on a theme slug). Ship with 2-3 themes: "Campaign" (current blue), "Formal" (neutral grey), "Warm" (cream + serif).
+3. **Bulk actions on the submission log** — select rows → delete / export selected. The existing export is all-rows only.
+4. **Resend for Error / Failed rows** — currently resend only fires on `pending_confirmation`. For entries where the confirmation succeeded but the MP send failed, a "Retry MP send" action would help recover without asking the constituent to resubmit. Needs the log to store enough state to replay `send_to_mp()` — may require a schema extension.
+5. **Surface auto-resend message on the GF frontend** — v1.6.7 re-sends the email silently; the constituent sees GF's default thanks page. A frontend hook that replaces the thanks-page text with "we've just re-sent your confirmation email" would close the UX loop.
+6. **Rename `SendToMP_Form_Adapter_Interface::get_slug()` to `get_adapter_slug()`** — the name shadows `GFFeedAddOn::get_slug()`, which is why feeds are stored with `addon_slug='gravity-forms'` instead of `'sendtomp'`. Deferred from v2 roadmap; worth doing when the adapter interface is next touched for other reasons (WPForms / CF7 work). Needs a one-time migration of `wp_gf_addon_feed.addon_slug` values on upgrade.
+7. **OAuth tiles are placeholders** — Google Workspace and Office 365 tiles on the Email Delivery tab render disabled with "Coming in v1.7 / v1.8". The full Pro-tier delivery is the next major arc (below).
 
 ---
 
-## Risk + gotchas (things to not re-discover)
+## Next major arcs — pick one or split across sessions
 
-1. **SMTP password storage** — the single most sensitive piece of state we'll hold. AES-256-GCM with a site-local key derived from `wp_salt('auth')` is adequate but not perfect (shared hosting + DB dumps still expose ciphertext + key). Consider a `SENDTOMP_SECRET_KEY` wp-config constant as an override so the key can live outside the DB. Document this clearly.
-2. **OAuth redirect URI registration** — Google requires the *exact* redirect URI registered in Cloud Console. This means every SendToMP site *cannot* register its own; we must centralise through bluetorch.co.uk. Non-negotiable constraint, drives the hosting-model decision.
-3. **Google OAuth consent-screen verification** — sending email via Gmail API uses a "restricted scope" (`gmail.send`) and triggers manual Google review. 1–2 week turnaround. Factor into the schedule.
-4. **Microsoft admin consent** — Office 365 admin tenants often require admin consent for `Mail.Send`. Our "Connect with Microsoft" button needs to handle the admin-consent redirect variant, not just user consent.
-5. **Coexistence with WP Mail SMTP** — if both are active and configured, whichever `phpmailer_init` priority runs last wins. We must bail when WP Mail SMTP is active, not race it.
-6. **Detected SMTP plugin as default** — this is the *correct* UX (don't disturb working setups), but it means our tile picker must have a "detected" state distinct from "user chose this". Subtle design detail; get it right or it's confusing.
-7. **`phpmailer_init` vs Gmail/Microsoft APIs** — those two bypass PHPMailer. Our mailer needs a clean provider-dispatch seam rather than always going through `wp_mail()`.
+### Arc A — Email Delivery OAuth (v1.7.0 + v1.8.0)
+
+Still locked from the prior session's plan. No new decisions needed; just groundwork + build.
+
+- **v1.7.0**: Google Workspace OAuth. Centralised on bluetorch.co.uk, client secret never touches the WP site, `gmail.send` scope. Needs a Google Cloud project + OAuth consent screen submission — **1-2 week Google review clock starts the moment we submit**, so kicking off the consent screen early is the first step even if we don't intend to ship v1.7 immediately.
+- **v1.8.0**: Office 365 / Outlook OAuth via Microsoft Graph `sendMail`.
+
+Both are Pro-tier features. Full design already in [git history for PLAN.md during v1.6 work] and the committed changelog for v1.6.0. The bluetorch.co.uk routes needed (`/sendtomp/oauth/<provider>/authorize`, `/callback`, `/exchange`, `/refresh`) are greenfield on the website repo.
+
+### Arc B — Licensing + Bluetorch authorisation + Stripe (NEW)
+
+This is Mike's explicit next theme. The plumbing already exists in fragments across both repos but has never been tied off.
+
+**Current state — plugin side:**
+
+- `SendToMP_License` class with `FEATURE_TIERS`, `TIER_FREE/PLUS/PRO`, and `can( $feature )` check used throughout (`sendtomp()->can('bcc')`, `can('lords')`, `can('csv_export')`, etc.)
+- `handle_activate_license` / `handle_deactivate_license` AJAX handlers on the License settings tab
+- Status cached in a 24-hour transient; fail-open on API downtime (safer than locking everyone out when Supabase hiccups)
+- `FREE_MONTHLY_LIMIT = 25` enforced by `check_monthly_limit()` in the pipeline
+
+**Current state — bluetorch.co.uk side:**
+
+- Licensing code lives on an **unmerged branch**: `feature/sendtomp-licensing`
+- Branch includes: Prisma models (`License`, `LicenseActivation`, `PluginRelease`), `/api/license/{activate,deactivate,check,check-update,portal}`, `/api/admin/licenses`, `/api/stripe/{checkout,webhook}`
+- "Production-ready but never merged" per the reference memory. Left alone during the resolver middleware build because we wanted the resolver PR independent.
+
+**What needs to happen:**
+
+1. **Merge `feature/sendtomp-licensing` into master** on the website repo. Review the branch against master (merge conflicts likely after the resolver work landed); resolve; merge; deploy to Vercel.
+2. **End-to-end test the activate → check → deactivate loop** against the deployed endpoints. The plugin already hits `/api/license/activate` via `handle_activate_license` — confirm the wire protocol still matches (payload shape, response shape, error codes).
+3. **Finish Stripe checkout + webhook flow:**
+   - Checkout: `/api/stripe/checkout` creates a Stripe Checkout session; customer goes through Stripe-hosted payment; on success Stripe fires webhook
+   - Webhook: `/api/stripe/webhook` creates a License row keyed to the Stripe customer, emails the licence key to the buyer, and provisions a portal URL
+   - Products needed: Plus (monthly + annual), Pro (monthly + annual). Annual = discount. Confirm the Stripe product IDs + prices on the website dashboard.
+   - Webhook signing secret in Vercel env: `STRIPE_WEBHOOK_SECRET`
+   - Test mode first; live mode once confirmed
+4. **Customer portal wiring:**
+   - `/api/license/portal` generates a Stripe Billing Portal session URL so customers can manage payment methods, download invoices, cancel
+   - Link surfaced from the plugin's License tab ("Manage billing on Bluetorch →") and from the licence-expired admin notice
+5. **Plugin-side UX polish:**
+   - License tab currently a basic key-entry input. Needs: clear tier/status display with renewal date, feature-tier comparison table ("what does Plus unlock?"), one-click "buy now" CTA that bounces the user to Stripe Checkout on bluetorch.co.uk
+   - License status refresh button (manual force-check) + last-checked-at timestamp
+   - On expired: clear banner + renewal link; no silent degradation
+6. **Plugin updater (updates from Bluetorch, not wp.org, for Plus/Pro):**
+   - We removed all updater code in v1.3.1 (wp.org Guideline 8 — can't serve updates from elsewhere if you're listed there)
+   - For Plus/Pro, wp.org rules don't apply (they're licenced add-ons). Check the current thinking: do we ship a separate "SendToMP Pro" plugin file that handles its own updates, or only update Pro-tier *features* (unlocked by the licence key, code stays in the free wp.org plugin)?
+   - The "code stays free, licence unlocks" model is simpler and is what `FEATURE_TIERS` already assumes. Confirm this is the locked design before building any updater. If so, no updater work is needed — licence key alone gates features.
+
+**Key decisions needed from Mike before picking this arc up:**
+
+1. **"Code stays, licence unlocks features" vs "separate Pro plugin with own updates"** — I assume the first (matches current code + wp.org constraints). Confirm.
+2. **Stripe products / prices** — what's the final price matrix? Plus monthly, Plus annual, Pro monthly, Pro annual. VAT handled on Stripe's side or ours?
+3. **Trial period** — offer a 14-day free trial on Plus / Pro? Stripe supports this directly in the checkout flow.
+4. **Activation limit per licence** — how many WP sites can activate one licence key? Plus = 1? Pro = 5? Unlimited? The `LicenseActivation` model exists but the quota rule isn't locked.
+5. **Renewal email cadence** — Brevo transactional emails for 30 days before expiry, 7 days, day-of, day-after? We can drive this from Stripe's subscription events.
+
+**Files / places involved:**
+
+- `E:\Dev\bluetorch.co.uk\website` — the whole licensing branch
+  - `/prisma/schema.prisma` — License, LicenseActivation, PluginRelease models
+  - `/src/app/api/license/*` — activate / deactivate / check / check-update / portal routes
+  - `/src/app/api/stripe/*` — checkout + webhook
+  - `/src/app/api/admin/licenses` — admin management
+  - `/src/app/sendtomp/pricing` — pricing page (if not already on master)
+- `E:\Dev\SendToMP`
+  - `includes/class-sendtomp-license.php` — client of the licensing API
+  - `admin/class-sendtomp-settings.php` — `handle_activate_license`, `handle_deactivate_license`
+  - `admin/views/settings-page.php` — License tab UI (currently a plain input)
 
 ---
 
-## What happens now
+## Starter sequence for next session
 
-Decisions locked. v1.6.0 bundles A + B + C. OAuth work (Cloud project, consent-screen submission, bluetorch.co.uk routes) starts **after** v1.6.0 ships — not in parallel. The 1–2 week Google review clock therefore starts post-v1.6 release; v1.7.0 is gated on Google's verification turnaround.
+If Mike wants to pick this up and the above decisions are locked, sensible order:
 
-Build order within v1.6.0:
+1. **Merge `feature/sendtomp-licensing` to master** on the website repo. Resolve conflicts with resolver work. Deploy to Vercel. Smoke-test the endpoints manually.
+2. **Wire the plugin against the live endpoints.** Test activate → check → deactivate. Surface any protocol mismatches and fix on one side.
+3. **Stripe checkout + webhook.** Start in test mode. Buy a test Plus licence end-to-end: checkout → webhook fires → licence row created → email sent → paste key into plugin → tier flips to Plus → `can('bcc')` returns true.
+4. **License tab polish** — tier / status / renewal date, feature table, buy-now CTA.
+5. **Customer portal link.** One round-trip test.
+6. **Go live on Stripe.** Switch to live keys. First real purchase.
 
-1. **Workstream A — branded admin header.** Smallest, most visible. Good warm-up and gets the logo into every other page we're about to touch, so the Email Delivery rebuild lands with the new header already in place.
-2. **Workstream C — provider engines** (behind the scenes): `SendToMP_Secret` helper, Brevo HTTP client, Custom SMTP `phpmailer_init` hook, detection of active SMTP plugins. No UI yet — just the plumbing.
-3. **Workstream B — tile picker UI.** Rewrites the Email Delivery tab. Renders all six tiles from day one; Google/Microsoft tiles show disabled "Coming in Pro (v1.7/v1.8)" state so layout is final now.
-4. **Wiring + test emails + ship v1.6.0.**
+Or, for parallelism: fork off an hour to submit the Google OAuth consent screen (Arc A groundwork) at the start of whichever session tackles Arc B, so the Google review clock is ticking while Stripe work proceeds.
 
-Artwork can land any time before step 4; tiles render text-only until it arrives.
+---
+
+## Memory updates to make when the next session starts
+
+- Graduate v1.5.0 custom field type out of the "v2 roadmap" memory (done earlier but worth double-checking).
+- Add a memory entry for the v1.6.x Email Delivery architecture (encrypted secrets helper, provider interface, Brevo HTTP, tile picker, mailer dispatcher). This is load-bearing knowledge the next Claude will need.
+- Note the "fail-open on license-API-downtime" behaviour of `SendToMP_License` so future work doesn't accidentally invert it into a fail-closed path that would brick Plus/Pro sites during Supabase outages.
